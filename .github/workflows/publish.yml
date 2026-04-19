@@ -1,8 +1,19 @@
 name: Publish to npm
 
-# Publish @flexops/elements to registry.npmjs.org when a vX.Y.Z tag is pushed.
-# Secret required:
-#   NPM_TOKEN — npm Automation token with publish scope for @flexops/elements
+# Publishes @flexops/elements to registry.npmjs.org via npm trusted publishing
+# (OIDC) — no stored token, no MFA prompt. Triggered on vX.Y.Z tag push or
+# manual workflow_dispatch.
+#
+# One-time setup on npmjs.com (required before the first run):
+#   1. Log in to npmjs.com → package @flexops/elements → Settings →
+#      Trusted Publishers
+#   2. Add a GitHub Actions trusted publisher with:
+#        Organization or user: BillEisenman
+#        Repository:           flexops-sdk-elements
+#        Workflow filename:    publish.yml
+#        Environment:          (leave blank)
+#
+# Docs: https://docs.npmjs.com/trusted-publishers
 
 on:
   push:
@@ -34,7 +45,5 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Publish
+      - name: Publish (OIDC trusted publisher)
         run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
