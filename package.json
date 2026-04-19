@@ -1,6 +1,6 @@
 {
   "name": "@flexops/elements",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Embeddable React widgets for FlexOps shipping — rate calculator, delivery promise, tracking, address validation, returns, and label creation",
   "type": "module",
   "main": "dist/index.cjs",
@@ -47,7 +47,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/BillEisenman/FlexOpsElements"
+    "url": "https://github.com/BillEisenman/flexops-sdk-elements"
   },
   "keywords": [
     "flexops",
