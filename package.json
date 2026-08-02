@@ -1,6 +1,6 @@
 {
   "name": "@flexops/elements",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Embeddable React widgets for FlexOps shipping — rate calculator, delivery promise, tracking, address validation, returns, and label creation",
   "type": "module",
   "main": "dist/index.cjs",
