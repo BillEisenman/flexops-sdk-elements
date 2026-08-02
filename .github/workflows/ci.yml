@@ -40,6 +40,11 @@ jobs:
       - name: Build
         run: npm run build
 
+      # The same check publish.yml runs immediately before `npm publish`. Running
+      # it here too means a broken export shape fails a PR rather than a release.
+      - name: Check package exports resolve
+        run: node scripts/check-exports.mjs
+
       - name: Test
         run: npm test
 
