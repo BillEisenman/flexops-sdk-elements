@@ -29,6 +29,10 @@ export default defineConfig({
       },
     },
     sourcemap: true,
-    minify: 'esbuild',
+    // Vite 8 no longer bundles esbuild: `minify: 'esbuild'` now fails with
+    // "Cannot find package 'esbuild'" unless it is installed separately, and the
+    // transformWithEsbuild path it uses is deprecated in favour of oxc. Use the
+    // minifier Vite 8 ships with rather than re-adding a dependency Vite removed.
+    minify: 'oxc',
   },
 });
