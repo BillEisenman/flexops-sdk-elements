@@ -186,27 +186,28 @@ describe('createLabel', () => {
   const config = { baseUrl: 'https://api.test.com' };
 
   it('sends POST to shipping/labels endpoint', async () => {
-    const mockResponse = { labelId: 'lbl_1', trackingNumber: '1Z999', carrier: 'ups', service: 'Ground', labelUrl: 'https://test/lbl.pdf', cost: 12.50 };
+    const mockResponse = { labelId: 'lbl_1', trackingNumber: '1Z999', isSandbox: true, carrierCode: 'ups', serviceCode: 'Ground', labelData: 'https://test/lbl.pdf', rate: 12.50 };
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockResponse) });
 
     const result = await createLabel(config, {
       from: { street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201', country: 'US' },
       to: { street1: '456 Main', city: 'LA', state: 'CA', postalCode: '90210', country: 'US' },
-      weightOz: 16,
+      weightOz: 16, maximumPostageAmount: 20,
     });
 
     expect(mockFetch).toHaveBeenCalledWith('https://api.test.com/api/shipping/labels', expect.objectContaining({ method: 'POST' }));
+    if ('status' in result) throw new Error('Expected sandbox label');
     expect(result.trackingNumber).toBe('1Z999');
     expect(result.cost).toBe(12.50);
   });
 
   it('includes API key header when provided', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ labelId: 'x', trackingNumber: 'x', carrier: 'x', service: 'x', labelUrl: 'x', cost: 0 }) });
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ labelId: 'x', trackingNumber: 'x', isSandbox: true, carrierCode: 'x', serviceCode: 'x', labelData: 'x', rate: 0 }) });
 
     await createLabel({ baseUrl: 'https://api.test.com', apiKey: 'fxk_test_789' }, {
       from: { street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
       to: { street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
-      weightOz: 1,
+      weightOz: 1, maximumPostageAmount: 20,
     });
 
     expect(mockFetch.mock.calls[0][1].headers['X-API-Key']).toBe('fxk_test_789');

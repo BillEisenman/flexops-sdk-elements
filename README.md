@@ -106,3 +106,11 @@ Available theme properties: `primaryColor`, `secondaryColor`, `backgroundColor`,
 ## License
 
 MIT - FlexOps, LLC
+
+### `<ShippingLabel>` approval flow
+
+The label form sends Gateway's normalized origin/destination/package payload. Enter a USD maximum and carrier/service, then select **Preview Postage**. Review the server quote and expiry, then explicitly **Approve and Buy**. Cancel returns to editing without a purchase. The maximum excludes later carrier adjustments and separate fees.
+
+Deploy this widget with Gateway's bounded approval contract; an older Gateway cannot guarantee preview semantics. Sandbox responses may immediately show a synthetic label without postage. After any attempted live purchase, the form retains its request, original client configuration and key and offers **Retry Same Purchase**. An unknown outcome must be reconciled before starting another purchase. Operation state lasts for the mounted widget only: keep it mounted while unresolved and retain the displayed reference for operator recovery if the page closes. No browser persistence of private shipment data is added.
+
+No npm publication or production carrier certification is implied by these source changes.
