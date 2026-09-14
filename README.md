@@ -114,3 +114,9 @@ The label form sends Gateway's normalized origin/destination/package payload. En
 Deploy this widget with Gateway's bounded approval contract; an older Gateway cannot guarantee preview semantics. Sandbox responses may immediately show a synthetic label without postage. After any attempted live purchase, the form retains its request, original client configuration and key and offers **Retry Same Purchase**. An unknown outcome must be reconciled before starting another purchase. Operation state lasts for the mounted widget only: keep it mounted while unresolved and retain the displayed reference for operator recovery if the page closes. No browser persistence of private shipment data is added.
 
 No npm publication or production carrier certification is implied by these source changes.
+
+## Guarded label release compatibility
+
+This release requires a Gateway deployment with the bounded label preview/approval contract (Gateway PR #509 or later). Do not use its live label preparation against an older Gateway: older servers may purchase immediately. Upgrade the Gateway and affected callers together during a purchase maintenance window.
+
+Live label creation now requires a USD maximum, preview, explicit approval, and replay of the saved request with its original idempotency key. Never retry an uncertain purchase with a new key. Sandbox results do not certify production postage.
