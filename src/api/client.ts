@@ -13,6 +13,7 @@ import type {
   ReturnConfirmation,
   CreateLabelRequest,
   LabelResponse,
+  LabelPurchasePreview,
   WidgetTrackingResponse,
   HsCodeClassifyRequest,
   HsCodeClassifyResponse,
@@ -134,20 +135,50 @@ export async function submitReturn(
   return handleResponse<ReturnConfirmation>(response);
 }
 
-/** Create a shipping label. */
+/** Preview or explicitly approve a label using the same immutable request and key. */
 export async function createLabel(
   config: ClientConfig,
   request: CreateLabelRequest,
   signal?: AbortSignal,
-): Promise<LabelResponse> {
-  const base = stripTrailingSlash(config.baseUrl);
-  const response = await fetch(`${base}/api/shipping/labels`, {
+  idempotencyKey?: string,
+  confirmationToken?: string,
+): Promise<LabelResponse | LabelPurchasePreview> {
+  if (confirmationToken && !idempotencyKey?.trim()) throw new Error('Reuse the original purchase key when approving or retrying.');
+  const purchaseKey = idempotencyKey ?? crypto.randomUUID();
+  const address = (value: CreateLabelRequest['from']) => ({
+    addressLine1: value.street1, addressLine2: value.street2,
+    city: value.city, stateProvince: value.state, postalCode: value.postalCode, countryCode: value.country,
+  });
+  const response = await fetch(`${stripTrailingSlash(config.baseUrl)}/api/shipping/labels`, {
     method: 'POST',
-    headers: buildHeaders(config),
-    body: JSON.stringify(request),
+    headers: { ...buildHeaders(config), 'Idempotency-Key': purchaseKey },
+    body: JSON.stringify({
+      origin: address(request.from), destination: address(request.to),
+      package: { weight: request.weightOz, weightUnit: 'oz', length: request.lengthIn,
+        width: request.widthIn, height: request.heightIn, dimensionUnit: 'in' },
+      carrierCode: request.carrier, serviceCode: request.service, labelFormat: 'PDF',
+      maximumPostageAmount: request.maximumPostageAmount, confirmationToken,
+    }),
     signal,
   });
-  return handleResponse<LabelResponse>(response);
+  const result = await handleResponse<LabelPurchasePreview & {
+    isSandbox?: boolean; labelId: string; trackingNumber: string; carrierCode: string;
+    serviceCode: string; labelData: string; rate: number;
+  }>(response);
+  if (result.status === 'Preview') {
+    if (confirmationToken || !result.confirmationToken || result.currency !== 'USD' ||
+        !Number.isFinite(result.quotedPostageAmount) || result.quotedPostageAmount <= 0 ||
+        result.maximumPostageAmount !== request.maximumPostageAmount ||
+        result.quotedPostageAmount > request.maximumPostageAmount || !Number.isFinite(Date.parse(result.expiresAt))) {
+      throw new Error('Gateway returned an invalid approval preview.');
+    }
+    return result;
+  }
+  if (!result.trackingNumber || (!confirmationToken && result.isSandbox !== true))
+    throw new Error('Gateway did not return a preview or a confirmed sandbox label.');
+  return { labelId: result.labelId, trackingNumber: result.trackingNumber,
+    carrier: result.carrierCode, service: result.serviceCode, cost: result.rate,
+    labelUrl: /^https:\/\//i.test(result.labelData) ? result.labelData : `data:application/pdf;base64,${result.labelData}` };
 }
 
 /** Fetch tracking data for a tracking link token. */

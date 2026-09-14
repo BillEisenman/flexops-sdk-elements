@@ -1,9 +1,9 @@
 // Copyright (c) FlexOps, LLC. All rights reserved.
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useId } from 'react';
 import { useFlexOps, resolveTheme } from '../../provider/context';
 import { createLabel } from '../../api/client';
-import type { LabelResponse } from '../../api/types';
+import type { LabelResponse, LabelPurchasePreview, CreateLabelRequest } from '../../api/types';
 import type { ShippingLabelProps } from './types';
 import { getStyles } from './styles';
 import { formatCurrency } from '../../utils/format';
@@ -28,8 +28,8 @@ import { getCarrierInfo } from '../../utils/carrier-logos';
 export function ShippingLabel({
   defaultFrom,
   lockFrom = false,
-  defaultCarrier = '',
-  defaultService = '',
+  defaultCarrier = 'usps',
+  defaultService = 'PRIORITY',
   showServiceSelection = true,
   onLabelCreated,
   onError,
@@ -63,12 +63,17 @@ export function ShippingLabel({
   const [heightIn, setHeightIn] = useState('');
   const [carrier, setCarrier] = useState(defaultCarrier);
   const [service, setService] = useState(defaultService);
+  const [maximum, setMaximum] = useState('');
+  const [pending, setPending] = useState<{ request: CreateLabelRequest; key: string; preview: LabelPurchasePreview; attempted: boolean; client: { baseUrl: string; apiKey?: string } } | null>(null);
+  const busy = useRef(false);
+  const maximumId = useId();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [label, setLabel] = useState<LabelResponse | null>(null);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy.current || pending) return;
 
     const weight = parseFloat(weightOz);
     if (!from.street1 || !from.postalCode || !to.street1 || !to.postalCode || isNaN(weight) || weight <= 0) {
@@ -76,12 +81,18 @@ export function ShippingLabel({
       return;
     }
 
+    const limit = Number(maximum);
+    if (!Number.isFinite(limit) || limit <= 0 || limit > 1000000 || !/^\d+(\.\d{1,2})?$/.test(maximum) || !carrier || !service) {
+      setError('Enter a maximum postage amount in USD and select a carrier and service.');
+      return;
+    }
+    busy.current = true;
     setLoading(true);
     setError(null);
     setLabel(null);
 
     try {
-      const response = await createLabel(config, {
+      const request: CreateLabelRequest = {
         from: {
           street1: from.street1.trim(),
           city: from.city.trim(),
@@ -102,18 +113,43 @@ export function ShippingLabel({
         heightIn: heightIn ? parseFloat(heightIn) : undefined,
         carrier: carrier || undefined,
         service: service || undefined,
-      });
-      setLabel(response);
-      onLabelCreated?.(response);
+        maximumPostageAmount: limit,
+      };
+      const key = crypto.randomUUID();
+      const response = await createLabel(config, request, undefined, key);
+      if ('status' in response) setPending({ request, key, preview: response, attempted: false, client: { baseUrl: config.baseUrl, apiKey: config.apiKey } });
+      else { setLabel(response); onLabelCreated?.(response); }
     } catch (err) {
       const message = err instanceof Error ? err.message
         : (err as { message?: string }).message ?? 'Failed to create label';
       setError(message);
       onError?.(new Error(message));
     } finally {
+      busy.current = false;
       setLoading(false);
     }
-  }, [from, to, weightOz, lengthIn, widthIn, heightIn, carrier, service, config, onLabelCreated, onError]);
+  }, [from, to, weightOz, lengthIn, widthIn, heightIn, carrier, service, config, onLabelCreated, onError, maximum, pending]);
+
+  async function approve() {
+    if (!pending || busy.current) return;
+    if (!pending.attempted && Date.parse(pending.preview.expiresAt) <= Date.now()) {
+      setError('Approval expired. Cancel and preview again.');
+      return;
+    }
+    busy.current = true;
+    setLoading(true);
+    setError(null);
+    setPending({ ...pending, attempted: true });
+    try {
+      const result = await createLabel(pending.client, pending.request, undefined, pending.key, pending.preview.confirmationToken);
+      if ('status' in result) throw new Error('Purchase did not return a label.');
+      setLabel(result); setPending(null); onLabelCreated?.(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : (err as { message?: string }).message ?? 'Purchase outcome is unknown.';
+      setError(`${message} Retain purchase reference ${pending.key}. Retry this purchase only; do not create another label. Contact an operator if reconciliation is required.`);
+      onError?.(new Error(message));
+    } finally { busy.current = false; setLoading(false); }
+  }
 
   if (label) {
     const carrierInfo = getCarrierInfo(label.carrier);
@@ -152,6 +188,7 @@ export function ShippingLabel({
       <h3 style={s.heading}>Create Shipping Label</h3>
 
       <form onSubmit={handleSubmit}>
+        <fieldset disabled={loading || pending !== null} style={{ border: 0, padding: 0, margin: 0 }}>
         {/* From Address */}
         <div style={s.sectionTitle}>From (Sender)</div>
         <div style={s.fieldGroupFull}>
@@ -250,9 +287,9 @@ export function ShippingLabel({
         {showServiceSelection && (
           <div style={s.fieldGroup}>
             <div>
-              <label style={s.label}>Carrier (optional)</label>
+              <label style={s.label}>Carrier</label>
               <select style={s.select} value={carrier} onChange={(e) => setCarrier(e.target.value)}>
-                <option value="">Auto-select best</option>
+                <option value="">Select carrier</option>
                 <option value="usps">USPS</option>
                 <option value="ups">UPS</option>
                 <option value="fedex">FedEx</option>
@@ -260,19 +297,36 @@ export function ShippingLabel({
               </select>
             </div>
             <div>
-              <label style={s.label}>Service (optional)</label>
+              <label style={s.label}>Service</label>
               <input style={s.input} type="text" placeholder="e.g., priority"
                 value={service} onChange={(e) => setService(e.target.value)} />
             </div>
           </div>
         )}
 
+        <div style={s.fieldGroupFull}>
+          <label style={s.label} htmlFor={maximumId}>Maximum postage (USD)</label>
+          <input id={maximumId} style={s.input} type="number" min="0.01" max="1000000" step="0.01"
+            value={maximum} onChange={(e) => setMaximum(e.target.value)} required />
+        </div>
         <button type="submit" style={loading ? s.buttonDisabled : s.button} disabled={loading}>
-          {loading ? 'Creating label...' : 'Create Label'}
+          {loading ? 'Requesting preview...' : 'Preview Postage'}
         </button>
+        </fieldset>
       </form>
+      {pending && <section aria-label="Approve postage" style={s.successBox}>
+        <h4>Approve Postage</h4>
+        <p>Quoted postage: {formatCurrency(pending.preview.quotedPostageAmount)} USD</p>
+        <p>Maximum authorized postage: {formatCurrency(pending.preview.maximumPostageAmount)} USD</p>
+        <p>Later carrier adjustments and separate fees are outside this maximum.</p>
+        <p>Approval expires: {new Date(pending.preview.expiresAt).toLocaleString()}</p>
+        <button type="button" disabled={loading} style={s.button} onClick={approve}>
+          {pending.attempted ? 'Retry Same Purchase' : 'Approve and Buy'}
+        </button>
+        {!pending.attempted && <button type="button" disabled={loading} onClick={() => { setPending(null); setError(null); }}>Cancel</button>}
+      </section>}
 
-      {error && <div style={s.errorMessage}>{error}</div>}
+      {error && <div role="alert" style={s.errorMessage}>{error}</div>}
       {loading && <div style={s.loading}>Creating your shipping label...</div>}
     </div>
   );

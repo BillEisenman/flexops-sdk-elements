@@ -149,6 +149,16 @@ export interface CreateLabelRequest {
   heightIn?: number;
   carrier?: string;
   service?: string;
+  maximumPostageAmount: number;
+}
+
+export interface LabelPurchasePreview {
+  status: 'Preview';
+  quotedPostageAmount: number;
+  maximumPostageAmount: number;
+  currency: 'USD';
+  expiresAt: string;
+  confirmationToken: string;
 }
 
 export interface LabelResponse {
