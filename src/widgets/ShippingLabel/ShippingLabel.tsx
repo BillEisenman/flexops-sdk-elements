@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useRef, useId } from 'react';
 import { useFlexOps, resolveTheme } from '../../provider/context';
 import { createLabel } from '../../api/client';
+import { isHazmatClassification } from '../../api/types';
 import type { LabelResponse, LabelPurchasePreview, CreateLabelRequest } from '../../api/types';
 import type { ShippingLabelProps } from './types';
 import { getStyles } from './styles';
@@ -18,6 +19,7 @@ import { getCarrierInfo } from '../../utils/carrier-logos';
  * ```tsx
  * <FlexOpsProvider config={{ baseUrl: 'https://gateway.flexops.io', apiKey: 'fxk_live_...' }}>
  *   <ShippingLabel
+ *     hazmatClassification={HazmatClassification.None}
  *     defaultFrom={{ street1: '123 Warehouse Ln', city: 'Dallas', state: 'TX', postalCode: '75201' }}
  *     lockFrom
  *     onLabelCreated={(label) => console.log('Tracking:', label.trackingNumber)}
@@ -31,6 +33,8 @@ export function ShippingLabel({
   defaultCarrier = 'usps',
   defaultService = 'PRIORITY',
   showServiceSelection = true,
+  orderId,
+  hazmatClassification,
   onLabelCreated,
   onError,
   className,
@@ -75,6 +79,14 @@ export function ShippingLabel({
     e.preventDefault();
     if (busy.current || pending) return;
 
+    // The declaration is the integrator's, set as a prop; the end customer is never asked.
+    if (hazmatClassification !== undefined ? !isHazmatClassification(hazmatClassification) : orderId == null) {
+      const message = 'This label form is not configured: set the hazmatClassification prop (0 = None) or an orderId.';
+      setError(message);
+      onError?.(new Error(message));
+      return;
+    }
+
     const weight = parseFloat(weightOz);
     if (!from.street1 || !from.postalCode || !to.street1 || !to.postalCode || isNaN(weight) || weight <= 0) {
       setError('Please fill in both addresses and package weight.');
@@ -114,6 +126,8 @@ export function ShippingLabel({
         carrier: carrier || undefined,
         service: service || undefined,
         maximumPostageAmount: limit,
+        orderId,
+        hazmatClassification,
       };
       const key = crypto.randomUUID();
       const response = await createLabel(config, request, undefined, key);
@@ -128,7 +142,7 @@ export function ShippingLabel({
       busy.current = false;
       setLoading(false);
     }
-  }, [from, to, weightOz, lengthIn, widthIn, heightIn, carrier, service, config, onLabelCreated, onError, maximum, pending]);
+  }, [from, to, weightOz, lengthIn, widthIn, heightIn, carrier, service, config, onLabelCreated, onError, maximum, pending, orderId, hazmatClassification]);
 
   async function approve() {
     if (!pending || busy.current) return;

@@ -5,6 +5,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { FlexOpsProvider } from '../src/provider/FlexOpsProvider';
 import { ShippingLabel } from '../src/widgets/ShippingLabel/ShippingLabel';
+import { HazmatClassification } from '../src/api/types';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -31,7 +32,7 @@ beforeEach(() => {
 
 describe('ShippingLabel', () => {
   it('renders from and to address sections', () => {
-    render(<ShippingLabel />, { wrapper });
+    render(<ShippingLabel hazmatClassification={HazmatClassification.None} />, { wrapper });
 
     expect(screen.getByText('Create Shipping Label')).toBeInTheDocument();
     expect(screen.getByText('From (Sender)')).toBeInTheDocument();
@@ -42,7 +43,7 @@ describe('ShippingLabel', () => {
 
   it('pre-fills sender address from defaultFrom prop', () => {
     render(
-      <ShippingLabel defaultFrom={{ street1: '123 Warehouse Ln', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
+      <ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ street1: '123 Warehouse Ln', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
       { wrapper },
     );
 
@@ -55,6 +56,7 @@ describe('ShippingLabel', () => {
   it('locks sender fields when lockFrom is true', () => {
     render(
       <ShippingLabel
+        hazmatClassification={HazmatClassification.None}
         defaultFrom={{ street1: '123 Warehouse Ln', city: 'Dallas', state: 'TX', postalCode: '75201' }}
         lockFrom
       />,
@@ -71,6 +73,7 @@ describe('ShippingLabel', () => {
     const onLabelCreated = vi.fn();
     render(
       <ShippingLabel
+        hazmatClassification={HazmatClassification.None}
         defaultFrom={{ street1: '123 Warehouse', city: 'Dallas', state: 'TX', postalCode: '75201' }}
         onLabelCreated={onLabelCreated}
       />,
@@ -101,7 +104,7 @@ describe('ShippingLabel', () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockLabelResponse) });
 
     render(
-      <ShippingLabel defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
+      <ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
       { wrapper },
     );
 
@@ -124,7 +127,7 @@ describe('ShippingLabel', () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockLabelResponse) });
 
     render(
-      <ShippingLabel defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
+      <ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
       { wrapper },
     );
 
@@ -154,6 +157,7 @@ describe('ShippingLabel', () => {
     const onError = vi.fn();
     render(
       <ShippingLabel
+        hazmatClassification={HazmatClassification.None}
         defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }}
         onError={onError}
       />,
@@ -179,7 +183,7 @@ describe('ShippingLabel', () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockLabelResponse) });
 
     render(
-      <ShippingLabel defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
+      <ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
       { wrapper },
     );
 
@@ -206,7 +210,7 @@ describe('ShippingLabel', () => {
   });
 
   it('hides carrier selection when showServiceSelection is false', () => {
-    render(<ShippingLabel showServiceSelection={false} />, { wrapper });
+    render(<ShippingLabel hazmatClassification={HazmatClassification.None} showServiceSelection={false} />, { wrapper });
 
     expect(screen.queryByText('Carrier')).not.toBeInTheDocument();
     expect(screen.queryByText('Service')).not.toBeInTheDocument();
@@ -216,7 +220,7 @@ describe('ShippingLabel', () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockLabelResponse) });
 
     render(
-      <ShippingLabel defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
+      <ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
       { wrapper },
     );
 
@@ -237,7 +241,7 @@ describe('ShippingLabel', () => {
 const preview = { status: 'Preview', quotedPostageAmount: 8.5, maximumPostageAmount: 10,
   currency: 'USD', expiresAt: '2099-01-01T00:00:00Z', confirmationToken: 'signed-preview' };
 function fillPurchase() {
-  render(<ShippingLabel defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />, { wrapper });
+  render(<ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />, { wrapper });
   for (const [placeholder, value] of [['456 Customer Ave', '789 Main'], ['Los Angeles', 'LA'], ['CA', 'CA'], ['90210', '90210'], ['16', '8']])
     fireEvent.change(screen.getByPlaceholderText(placeholder), { target: { value } });
   fireEvent.change(screen.getByLabelText('Maximum postage (USD)'), { target: { value: '10.00' } });
@@ -270,4 +274,61 @@ it('requires approval and retries the exact purchase after response loss', async
   expect(mockFetch.mock.calls[1][1].body).toBe(mockFetch.mock.calls[2][1].body);
   expect(mockFetch.mock.calls[0][1].headers['Idempotency-Key']).toBe(mockFetch.mock.calls[2][1].headers['Idempotency-Key']);
   expect(JSON.parse(mockFetch.mock.calls[1][1].body).confirmationToken).toBe('signed-preview');
+});
+
+describe('ShippingLabel HAZMAT declaration', () => {
+  function submit(props: React.ComponentProps<typeof ShippingLabel>) {
+    render(<ShippingLabel {...props} defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />, { wrapper });
+    for (const [placeholder, value] of [['456 Customer Ave', '789 Main'], ['Los Angeles', 'LA'], ['CA', 'CA'], ['90210', '90210'], ['16', '8']])
+      fireEvent.change(screen.getByPlaceholderText(placeholder), { target: { value } });
+    fireEvent.change(screen.getByLabelText('Maximum postage (USD)'), { target: { value: '10.00' } });
+    fireEvent.click(screen.getByText('Preview Postage'));
+  }
+
+  it('sends the integrator-declared class, including 0 (None)', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => preview });
+    submit({ hazmatClassification: HazmatClassification.None });
+    await screen.findByText('Approve and Buy');
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.hazmatClassification).toBe(0);
+    expect('orderId' in body).toBe(false);
+  });
+
+  it('sends a declared class and keeps it on the approved purchase', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => preview })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ...mockLabelResponse, isSandbox: false }) });
+    submit({ hazmatClassification: HazmatClassification.LithiumBatteryContainedInEquipment });
+    fireEvent.click(await screen.findByText('Approve and Buy'));
+    await screen.findByText('Label Created', { exact: false });
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body).hazmatClassification).toBe(2);
+    expect(JSON.parse(mockFetch.mock.calls[1][1].body).hazmatClassification).toBe(2);
+  });
+
+  it('does not require a class for a label bought against an order, and omits it', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => preview });
+    submit({ orderId: 42 });
+    await screen.findByText('Approve and Buy');
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.orderId).toBe(42);
+    expect('hazmatClassification' in body).toBe(false);
+  });
+
+  it('refuses to request a label without an order or a declared class', async () => {
+    const onError = vi.fn();
+    submit({ onError } as unknown as React.ComponentProps<typeof ShippingLabel>);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/hazmatClassification/);
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalled();
+  });
+
+  it('refuses a value that is not a HAZMAT class', async () => {
+    submit({ hazmatClassification: 9 } as unknown as React.ComponentProps<typeof ShippingLabel>);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/hazmatClassification/);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('never asks the end customer about dangerous goods', () => {
+    render(<ShippingLabel hazmatClassification={HazmatClassification.None} />, { wrapper });
+    expect(screen.queryByText(/hazmat|dangerous|lithium/i)).not.toBeInTheDocument();
+  });
 });

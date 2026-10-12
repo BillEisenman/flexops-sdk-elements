@@ -143,14 +143,39 @@ describe('fetchDeliveryEstimate', () => {
 describe('validateAddress', () => {
   const config = { baseUrl: 'https://api.test.com' };
 
-  it('sends POST to addresses/validate endpoint', async () => {
-    const mockResponse = { isValid: true, normalizedAddress: { street1: '123 MAIN ST', street2: null, city: 'NYC', state: 'NY', postalCode: '10001', country: 'US' }, messages: [] };
+  // Gateway AddressValidationController (api/addresses/validate) binds
+  // AddressValidationDTOs.AddressValidationRequest and returns AddressValidationResult.
+  it('sends the Gateway request fields and maps the Gateway result', async () => {
+    const mockResponse = { isValid: true, validationUnavailable: false, isResidential: true, validatedBy: 'USPS',
+      suggestedAddress: { line1: '123 MAIN ST', line2: null, city: 'NYC', state: 'NY', postalCode: '10001-1234', country: 'US' },
+      warnings: ['Suite number missing'] };
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockResponse) });
 
-    const result = await validateAddress(config, { street1: '123 main st', city: 'nyc', state: 'ny', postalCode: '10001', country: 'US' });
+    const result = await validateAddress(config, { street1: '123 main st', street2: 'Apt 2', city: 'nyc', state: 'ny', postalCode: '10001', country: 'US' });
 
     expect(mockFetch).toHaveBeenCalledWith('https://api.test.com/api/addresses/validate', expect.objectContaining({ method: 'POST' }));
-    expect(result.isValid).toBe(true);
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual(
+      { line1: '123 main st', line2: 'Apt 2', city: 'nyc', state: 'ny', postalCode: '10001', country: 'US' });
+    expect(result).toEqual({
+      isValid: true, validationUnavailable: false, isResidential: true,
+      normalizedAddress: { street1: '123 MAIN ST', street2: null, city: 'NYC', state: 'NY', postalCode: '10001-1234', country: 'US' },
+      messages: ['Suite number missing'],
+    });
+  });
+
+  it('keeps the submitted address when a valid result has no suggestion', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ isValid: true, suggestedAddress: null, warnings: [] }) });
+    const result = await validateAddress(config, { street1: '1 Main', city: 'Austin', state: 'TX', postalCode: '78701', country: 'US' });
+    expect(result.normalizedAddress).toEqual({ street1: '1 Main', street2: null, city: 'Austin', state: 'TX', postalCode: '78701', country: 'US' });
+  });
+
+  it('reports an unavailable check instead of an empty rejection', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ isValid: false, validationUnavailable: true, warnings: [] }) });
+    const result = await validateAddress(config, { street1: '1 Main', city: 'Austin', state: 'TX', postalCode: '78701', country: 'US' });
+    expect(result.isValid).toBe(false);
+    expect(result.validationUnavailable).toBe(true);
+    expect(result.normalizedAddress).toBeNull();
+    expect(result.messages).toEqual(['Address validation is unavailable right now. Try again later.']);
   });
 });
 
@@ -184,6 +209,27 @@ describe('submitReturn', () => {
 
 describe('createLabel', () => {
   const config = { baseUrl: 'https://api.test.com' };
+
+  it('sends hazmatClassification and orderId only when set', async () => {
+    const sandbox = { labelId: 'x', trackingNumber: 'x', isSandbox: true, carrierCode: 'x', serviceCode: 'x', labelData: 'x', rate: 0 };
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(sandbox) });
+    const request = {
+      from: { street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
+      to: { street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
+      weightOz: 1, maximumPostageAmount: 20,
+    };
+
+    await createLabel(config, request);
+    await createLabel(config, { ...request, hazmatClassification: 0 });
+    await createLabel(config, { ...request, orderId: 42 });
+
+    const sent = mockFetch.mock.calls.map((call) => JSON.parse(call[1].body));
+    expect('hazmatClassification' in sent[0]).toBe(false);
+    expect('orderId' in sent[0]).toBe(false);
+    expect(sent[1].hazmatClassification).toBe(0);
+    expect(sent[2].orderId).toBe(42);
+    expect('hazmatClassification' in sent[2]).toBe(false);
+  });
 
   it('sends POST to shipping/labels endpoint', async () => {
     const mockResponse = { labelId: 'lbl_1', trackingNumber: '1Z999', isSandbox: true, carrierCode: 'ups', serviceCode: 'Ground', labelData: 'https://test/lbl.pdf', rate: 12.50 };
