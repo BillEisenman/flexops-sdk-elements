@@ -140,6 +140,27 @@ export interface ReturnConfirmation {
 
 // Mirrors Gateway ShippingLabelDTOs
 
+/**
+ * USPS HAZMAT classification, sent as the Gateway `HazmatClassification` number.
+ * There is no default: send `HazmatClassification.None` (0) to declare that the parcel
+ * holds no dangerous goods. A label without an order must declare one.
+ */
+export const HazmatClassification = {
+  None: 0,
+  LimitedQuantity: 1,
+  LithiumBatteryContainedInEquipment: 2,
+  LithiumBatteryPackedWithEquipment: 3,
+  LithiumBatteryStandalone: 4,
+  OtherRestricted: 5,
+  LithiumBatteryUsedDevice: 6,
+} as const;
+export type HazmatClassification = (typeof HazmatClassification)[keyof typeof HazmatClassification];
+
+/** True when `value` is one of the Gateway HAZMAT class numbers. */
+export function isHazmatClassification(value: unknown): value is HazmatClassification {
+  return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 6;
+}
+
 export interface CreateLabelRequest {
   from: AddressValidationRequest;
   to: AddressValidationRequest;
@@ -150,6 +171,10 @@ export interface CreateLabelRequest {
   carrier?: string;
   service?: string;
   maximumPostageAmount: number;
+  /** Order the label is bought against. */
+  orderId?: number;
+  /** Declared HAZMAT class; sent only when set. Required by the Gateway when there is no orderId. */
+  hazmatClassification?: HazmatClassification;
 }
 
 export interface LabelPurchasePreview {

@@ -157,6 +157,7 @@ export async function createLabel(
       package: { weight: request.weightOz, weightUnit: 'oz', length: request.lengthIn,
         width: request.widthIn, height: request.heightIn, dimensionUnit: 'in' },
       carrierCode: request.carrier, serviceCode: request.service, labelFormat: 'PDF',
+      orderId: request.orderId, hazmatClassification: request.hazmatClassification,
       maximumPostageAmount: request.maximumPostageAmount, confirmationToken,
     }),
     signal,

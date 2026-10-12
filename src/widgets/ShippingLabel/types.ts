@@ -1,9 +1,20 @@
 // Copyright (c) FlexOps, LLC. All rights reserved.
 
-import type { LabelResponse } from '../../api/types';
+import type { HazmatClassification, LabelResponse } from '../../api/types';
 import type { FlexOpsTheme } from '../../provider/types';
 
-export interface ShippingLabelProps {
+/**
+ * What the parcel holds. The integrator declares it; the widget never asks the end customer.
+ * A label without an `orderId` must declare it (`HazmatClassification.None` for an ordinary
+ * parcel); a label bought against an order may omit it.
+ */
+export type ShippingLabelDeclarationProps =
+  | { orderId?: undefined; hazmatClassification: HazmatClassification }
+  | { orderId: number; hazmatClassification?: HazmatClassification };
+
+export type ShippingLabelProps = ShippingLabelBaseProps & ShippingLabelDeclarationProps;
+
+export interface ShippingLabelBaseProps {
   /** Pre-fill the sender address fields. */
   defaultFrom?: {
     street1?: string;

@@ -185,6 +185,27 @@ describe('submitReturn', () => {
 describe('createLabel', () => {
   const config = { baseUrl: 'https://api.test.com' };
 
+  it('sends hazmatClassification and orderId only when set', async () => {
+    const sandbox = { labelId: 'x', trackingNumber: 'x', isSandbox: true, carrierCode: 'x', serviceCode: 'x', labelData: 'x', rate: 0 };
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(sandbox) });
+    const request = {
+      from: { street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
+      to: { street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
+      weightOz: 1, maximumPostageAmount: 20,
+    };
+
+    await createLabel(config, request);
+    await createLabel(config, { ...request, hazmatClassification: 0 });
+    await createLabel(config, { ...request, orderId: 42 });
+
+    const sent = mockFetch.mock.calls.map((call) => JSON.parse(call[1].body));
+    expect('hazmatClassification' in sent[0]).toBe(false);
+    expect('orderId' in sent[0]).toBe(false);
+    expect(sent[1].hazmatClassification).toBe(0);
+    expect(sent[2].orderId).toBe(42);
+    expect('hazmatClassification' in sent[2]).toBe(false);
+  });
+
   it('sends POST to shipping/labels endpoint', async () => {
     const mockResponse = { labelId: 'lbl_1', trackingNumber: '1Z999', isSandbox: true, carrierCode: 'ups', serviceCode: 'Ground', labelData: 'https://test/lbl.pdf', rate: 12.50 };
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockResponse) });

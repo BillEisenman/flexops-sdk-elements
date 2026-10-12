@@ -113,6 +113,18 @@ The label form sends Gateway's normalized origin/destination/package payload. En
 
 Deploy this widget with Gateway's bounded approval contract; an older Gateway cannot guarantee preview semantics. Sandbox responses may immediately show a synthetic label without postage. After any attempted live purchase, the form retains its request, original client configuration and key and offers **Retry Same Purchase**. An unknown outcome must be reconciled before starting another purchase. Operation state lasts for the mounted widget only: keep it mounted while unresolved and retain the displayed reference for operator recovery if the page closes. No browser persistence of private shipment data is added.
 
+**HAZMAT declaration.** A label without an order must declare what the parcel holds. Set the `hazmatClassification` prop (TypeScript requires it unless you pass `orderId`); the widget sends it as given and never asks the end customer. Use `HazmatClassification.None` (0) for an ordinary parcel:
+
+```tsx
+import { ShippingLabel, HazmatClassification } from '@flexops/elements';
+
+<ShippingLabel hazmatClassification={HazmatClassification.None} />
+// or, for a label bought against an order (the class is then optional):
+<ShippingLabel orderId={12345} />
+```
+
+Without `orderId` or a valid class the widget shows a configuration error and calls `onError` instead of requesting a label.
+
 No npm publication or production carrier certification is implied by these source changes.
 
 ## Guarded label release compatibility

@@ -20,6 +20,7 @@ export { ReturnPortal } from './widgets/ReturnPortal/ReturnPortal';
 export type { ReturnPortalProps } from './widgets/ReturnPortal/types';
 export { ShippingLabel } from './widgets/ShippingLabel/ShippingLabel';
 export type { ShippingLabelProps } from './widgets/ShippingLabel/types';
+export { HazmatClassification } from './api/types';
 export { HsCodeLookup } from './widgets/HsCodeLookup/HsCodeLookup';
 export type { HsCodeLookupProps } from './widgets/HsCodeLookup/types';
 
