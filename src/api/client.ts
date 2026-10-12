@@ -87,7 +87,11 @@ export async function fetchDeliveryEstimate(
   return handleResponse<DeliveryEstimateResponse>(response);
 }
 
-/** Validate and normalize a shipping address. */
+/**
+ * Validate and normalize a shipping address. Calls the Gateway AddressValidationController
+ * (`api/addresses/validate`), whose request uses `line1`/`line2` and whose result carries
+ * `suggestedAddress` and `warnings`; both are mapped to the widget types here.
+ */
 export async function validateAddress(
   config: ClientConfig,
   request: AddressValidationRequest,
@@ -97,10 +101,39 @@ export async function validateAddress(
   const response = await fetch(`${base}/api/addresses/validate`, {
     method: 'POST',
     headers: buildHeaders(config),
-    body: JSON.stringify(request),
+    body: JSON.stringify({
+      line1: request.street1, line2: request.street2, city: request.city,
+      state: request.state, postalCode: request.postalCode, country: request.country,
+    }),
     signal,
   });
-  return handleResponse<AddressValidationResult>(response);
+  const result = await handleResponse<GatewayAddressValidationResult>(response);
+  const suggested = result.suggestedAddress;
+  const normalizedAddress = suggested
+    ? { street1: suggested.line1, street2: suggested.line2 ?? null, city: suggested.city,
+        state: suggested.state, postalCode: suggested.postalCode, country: suggested.country }
+    : result.isValid
+      ? { street1: request.street1, street2: request.street2 ?? null, city: request.city,
+          state: request.state, postalCode: request.postalCode, country: request.country }
+      : null;
+  const warnings = result.warnings ?? [];
+  return {
+    isValid: result.isValid,
+    normalizedAddress,
+    messages: result.validationUnavailable && warnings.length === 0
+      ? ['Address validation is unavailable right now. Try again later.'] : warnings,
+    ...(result.validationUnavailable !== undefined ? { validationUnavailable: result.validationUnavailable } : {}),
+    ...(result.isResidential !== undefined ? { isResidential: result.isResidential } : {}),
+  };
+}
+
+/** The Gateway AddressValidationDTOs.AddressValidationResult wire shape. */
+interface GatewayAddressValidationResult {
+  isValid: boolean;
+  validationUnavailable?: boolean;
+  isResidential?: boolean | null;
+  suggestedAddress?: { line1: string; line2?: string | null; city: string; state: string; postalCode: string; country: string } | null;
+  warnings?: string[];
 }
 
 /** Check return eligibility for an order. */

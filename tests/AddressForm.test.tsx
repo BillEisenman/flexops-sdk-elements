@@ -15,23 +15,24 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
   </FlexOpsProvider>
 );
 
+// Gateway AddressValidationResult (api/addresses/validate).
 const mockValidResponse = {
   isValid: true,
-  normalizedAddress: {
-    street1: '123 MAIN ST',
-    street2: null,
+  suggestedAddress: {
+    line1: '123 MAIN ST',
+    line2: null,
     city: 'NEW YORK',
     state: 'NY',
     postalCode: '10001-1234',
     country: 'US',
   },
-  messages: [],
+  warnings: [],
 };
 
 const mockInvalidResponse = {
   isValid: false,
-  normalizedAddress: null,
-  messages: ['Address not found', 'Please verify the street number'],
+  suggestedAddress: null,
+  warnings: ['Address not found', 'Please verify the street number'],
 };
 
 beforeEach(() => {
@@ -85,7 +86,11 @@ describe('AddressForm', () => {
       expect(screen.getByText(/NEW YORK, NY 10001-1234/)).toBeInTheDocument();
     });
 
-    expect(onAddressValidated).toHaveBeenCalledWith(mockValidResponse);
+    expect(onAddressValidated).toHaveBeenCalledWith({
+      isValid: true,
+      normalizedAddress: { street1: '123 MAIN ST', street2: null, city: 'NEW YORK', state: 'NY', postalCode: '10001-1234', country: 'US' },
+      messages: [],
+    });
   });
 
   it('shows validation messages when address is invalid', async () => {
@@ -149,7 +154,8 @@ describe('AddressForm', () => {
     });
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body.street1).toBe('123 Main St');
+    expect(body.line1).toBe('123 Main St');
+    expect(body.street1).toBeUndefined();
     expect(body.city).toBe('New York');
     expect(body.state).toBe('NY');
     expect(body.postalCode).toBe('10001');

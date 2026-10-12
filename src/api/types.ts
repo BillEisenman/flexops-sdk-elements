@@ -98,6 +98,10 @@ export interface AddressValidationResult {
     country: string;
   } | null;
   messages: string[];
+  /** True when the carrier check could not complete; this is not an address rejection. */
+  validationUnavailable?: boolean;
+  /** Residential indicator from the carrier, when known. */
+  isResidential?: boolean | null;
 }
 
 // Mirrors Gateway ReturnPortalDTOs
