@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`@flexops/elements` is the embeddable React widget library for FlexOps shipping. It provides drop-in components third parties can render on their own sites: **rate calculator, delivery promise, tracking, address validation, returns, and label creation**. Published to npm as `@flexops/elements`; current version `1.0.2`.
+`@flexops/elements` is the embeddable React widget library for FlexOps shipping. It provides drop-in components third parties can render on their own sites: **rate calculator, delivery promise, tracking, address validation, HS code lookup, and label creation**. Published to npm as `@flexops/elements`; current version `1.0.2`.
 
 Distinct from `@flexops/sdk` (the headless TypeScript SDK): Elements ships **UI**; the SDK ships **functions**. Elements depends on Gateway HTTP endpoints and uses the customer's publishable key (à la Stripe Elements) — no server-side secret leaks to the browser.
 

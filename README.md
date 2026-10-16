@@ -91,11 +91,8 @@ Each widget calls one FlexOps Gateway route. A configured `apiKey` is sent as `X
 | `AddressForm` | `POST /api/addresses/validate` | `shipping:read` |
 | `HsCodeLookup` | `POST /api/shipping/hs-codes/classify` | `shipping:read`, international shipping enabled |
 | `ShippingLabel` | `POST /api/shipping/labels` | `shipping:write` |
-| `ReturnPortal` | None: not available yet | — |
 
 `DeliveryPromise` turns each service's `estimatedDeliveryDays` into a date after the next ship date, fastest first. The days are the Gateway's fixed per-service estimates, not carrier commitments, and carry no on-time confidence. Set `weightOz` (default 16) to the typical parcel weight.
-
-`ReturnPortal` shows a "not available yet" notice and calls `onError` once. The Gateway has no shopper-facing return lookup or submission; its returns API is workspace-scoped and needs a key that must not be put in a shopper's browser.
 
 ## Theming
 

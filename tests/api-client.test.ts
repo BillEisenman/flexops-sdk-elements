@@ -215,10 +215,14 @@ describe('Gateway routes (#33)', () => {
     }
   });
 
-  it('no longer exports clients for the missing shopper return routes', async () => {
+  // Founder ruling 2026-07-21: returns are merchant-initiated only, so there is no
+  // shopper return widget or client.
+  it('ships no shopper return widget or client', async () => {
     const client = await import('../src/api/client');
+    const pkg = await import('../src/index');
     expect('checkReturnEligibility' in client).toBe(false);
     expect('submitReturn' in client).toBe(false);
+    expect('ReturnPortal' in pkg).toBe(false);
   });
 });
 

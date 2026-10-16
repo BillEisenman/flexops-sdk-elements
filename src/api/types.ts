@@ -116,34 +116,6 @@ export interface AddressValidationResult {
   isResidential?: boolean | null;
 }
 
-// Shopper return types. The Gateway has no shopper-facing return endpoint yet, so the
-// ReturnPortal widget makes no request; these types stay exported for compatibility.
-
-export interface ReturnableItem {
-  lineItemId: string;
-  productName: string;
-  sku: string;
-  quantity: number;
-  maxReturnableQty: number;
-  imageUrl: string | null;
-  price: number;
-}
-
-export interface ReturnEligibilityResponse {
-  eligible: boolean;
-  orderNumber: string;
-  items: ReturnableItem[];
-  returnWindowCloses: string | null;
-  message: string | null;
-}
-
-export interface ReturnConfirmation {
-  rmaNumber: string;
-  returnLabelUrl: string | null;
-  qrCodeUrl: string | null;
-  instructions: string;
-}
-
 // Mirrors Gateway ShippingLabelDTOs
 
 /**
