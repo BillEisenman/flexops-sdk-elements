@@ -16,8 +16,6 @@ export { DeliveryPromise } from './widgets/DeliveryPromise/DeliveryPromise';
 export type { DeliveryPromiseProps } from './widgets/DeliveryPromise/types';
 export { AddressForm } from './widgets/AddressForm/AddressForm';
 export type { AddressFormProps } from './widgets/AddressForm/types';
-export { ReturnPortal } from './widgets/ReturnPortal/ReturnPortal';
-export type { ReturnPortalProps } from './widgets/ReturnPortal/types';
 export { ShippingLabel } from './widgets/ShippingLabel/ShippingLabel';
 export type { ShippingLabelProps } from './widgets/ShippingLabel/types';
 export { HazmatClassification } from './api/types';
@@ -31,9 +29,6 @@ export type {
   DeliveryEstimate,
   DeliveryEstimateResponse,
   AddressValidationResult,
-  ReturnableItem,
-  ReturnEligibilityResponse,
-  ReturnConfirmation,
   LabelResponse,
   WidgetTrackingResponse,
   WidgetTrackingEvent,

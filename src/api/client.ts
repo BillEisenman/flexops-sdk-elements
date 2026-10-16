@@ -4,13 +4,9 @@ import type {
   PublicRateEstimateRequest,
   PublicRateEstimateResponse,
   DeliveryEstimateRequest,
-  DeliveryEstimateResponse,
+  DeliveryTransitEstimate,
   AddressValidationRequest,
   AddressValidationResult,
-  ReturnEligibilityRequest,
-  ReturnEligibilityResponse,
-  ReturnSubmission,
-  ReturnConfirmation,
   CreateLabelRequest,
   LabelResponse,
   LabelPurchasePreview,
@@ -71,20 +67,29 @@ export async function fetchRates(
   return handleResponse<PublicRateEstimateResponse>(response);
 }
 
-/** Fetch delivery date estimates for a destination. */
+/**
+ * Fetch transit times for a destination, fastest first. The Gateway has no delivery-estimate
+ * endpoint, so this reads `estimatedDeliveryDays` from the anonymous public rate estimate
+ * (`api/rates/public-estimate`) and drops services that carry no transit time.
+ */
 export async function fetchDeliveryEstimate(
   config: ClientConfig,
   request: DeliveryEstimateRequest,
   signal?: AbortSignal,
-): Promise<DeliveryEstimateResponse> {
-  const base = stripTrailingSlash(config.baseUrl);
-  const response = await fetch(`${base}/api/shipping/delivery-estimate`, {
-    method: 'POST',
-    headers: buildHeaders(config),
-    body: JSON.stringify(request),
-    signal,
-  });
-  return handleResponse<DeliveryEstimateResponse>(response);
+): Promise<{ estimates: DeliveryTransitEstimate[]; generatedAtUtc: string }> {
+  const result = await fetchRates(config, {
+    fromPostalCode: request.originPostalCode,
+    fromCountry: request.originCountry,
+    toPostalCode: request.destinationPostalCode,
+    toCountry: request.destinationCountry,
+    weightOz: request.weightOz,
+  }, signal);
+  const estimates = (result.rates ?? [])
+    .filter((rate) => Number.isInteger(rate.estimatedDeliveryDays) && (rate.estimatedDeliveryDays as number) >= 0)
+    .map((rate) => ({ carrierName: rate.carrierName, serviceName: rate.serviceName,
+      businessDaysInTransit: rate.estimatedDeliveryDays as number }))
+    .sort((a, b) => a.businessDaysInTransit - b.businessDaysInTransit);
+  return { estimates, generatedAtUtc: result.generatedAtUtc };
 }
 
 /**
@@ -136,38 +141,6 @@ interface GatewayAddressValidationResult {
   warnings?: string[];
 }
 
-/** Check return eligibility for an order. */
-export async function checkReturnEligibility(
-  config: ClientConfig,
-  request: ReturnEligibilityRequest,
-  signal?: AbortSignal,
-): Promise<ReturnEligibilityResponse> {
-  const base = stripTrailingSlash(config.baseUrl);
-  const response = await fetch(`${base}/api/returns/eligibility`, {
-    method: 'POST',
-    headers: buildHeaders(config),
-    body: JSON.stringify(request),
-    signal,
-  });
-  return handleResponse<ReturnEligibilityResponse>(response);
-}
-
-/** Submit a return request. */
-export async function submitReturn(
-  config: ClientConfig,
-  request: ReturnSubmission,
-  signal?: AbortSignal,
-): Promise<ReturnConfirmation> {
-  const base = stripTrailingSlash(config.baseUrl);
-  const response = await fetch(`${base}/api/returns/submit`, {
-    method: 'POST',
-    headers: buildHeaders(config),
-    body: JSON.stringify(request),
-    signal,
-  });
-  return handleResponse<ReturnConfirmation>(response);
-}
-
 /** Preview or explicitly approve a label using the same immutable request and key. */
 export async function createLabel(
   config: ClientConfig,
@@ -195,9 +168,11 @@ export async function createLabel(
     }),
     signal,
   });
+  // Gateway ShippingLabel: it echoes the carrier but not the service, so the service shown is
+  // the one this request bought.
   const result = await handleResponse<LabelPurchasePreview & {
     isSandbox?: boolean; labelId: string; trackingNumber: string; carrierCode: string;
-    serviceCode: string; labelData: string; rate: number;
+    labelData: string; rate: number;
   }>(response);
   if (result.status === 'Preview') {
     if (confirmationToken || !result.confirmationToken || result.currency !== 'USD' ||
@@ -211,7 +186,7 @@ export async function createLabel(
   if (!result.trackingNumber || (!confirmationToken && result.isSandbox !== true))
     throw new Error('Gateway did not return a preview or a confirmed sandbox label.');
   return { labelId: result.labelId, trackingNumber: result.trackingNumber,
-    carrier: result.carrierCode, service: result.serviceCode, cost: result.rate,
+    carrier: result.carrierCode, service: request.service ?? '', cost: result.rate,
     labelUrl: /^https:\/\//i.test(result.labelData) ? result.labelData : `data:application/pdf;base64,${result.labelData}` };
 }
 
