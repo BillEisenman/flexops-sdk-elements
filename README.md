@@ -39,7 +39,7 @@ Wraps all FlexOps widgets with configuration and theming.
 <FlexOpsProvider
   config={{
     baseUrl: 'https://gateway.flexops.io',  // Required
-    apiKey: 'fxk_live_...',              // Optional — for future authenticated endpoints
+    apiKey: 'fxk_live_...',              // Sent as X-API-Key; needed by AddressForm, ShippingLabel, HsCodeLookup
     theme: {                              // Optional — override default styling
       primaryColor: '#your-brand-color',
       fontFamily: 'Inter, sans-serif',
@@ -78,6 +78,24 @@ Displays real-time package tracking with workspace branding.
 | `showBranding` | `boolean` | `true` | Show workspace branding |
 | `onTrackingLoaded` | `(data) => void` | — | Callback when data loads |
 | `onError` | `(error) => void` | — | Callback on error |
+
+### Gateway endpoints
+
+Each widget calls one FlexOps Gateway route. A configured `apiKey` is sent as `X-API-Key`; the Gateway refuses API keys sent as `Authorization: Bearer`.
+
+| Widget | Request | API key |
+|---|---|---|
+| `RateCalculator` | `POST /api/rates/public-estimate` | Not needed (anonymous, rate-limited per IP) |
+| `DeliveryPromise` | `POST /api/rates/public-estimate` | Not needed |
+| `TrackingWidget` | `GET /api/widget/tracking/{token}` | Not needed |
+| `AddressForm` | `POST /api/addresses/validate` | `shipping:read` |
+| `HsCodeLookup` | `POST /api/shipping/hs-codes/classify` | `shipping:read`, international shipping enabled |
+| `ShippingLabel` | `POST /api/shipping/labels` | `shipping:write` |
+| `ReturnPortal` | None: not available yet | — |
+
+`DeliveryPromise` turns each service's `estimatedDeliveryDays` into a date after the next ship date, fastest first. The days are the Gateway's fixed per-service estimates, not carrier commitments, and carry no on-time confidence. Set `weightOz` (default 16) to the typical parcel weight.
+
+`ReturnPortal` shows a "not available yet" notice and calls `onError` once. The Gateway has no shopper-facing return lookup or submission; its returns API is workspace-scoped and needs a key that must not be put in a shopper's browser.
 
 ## Theming
 

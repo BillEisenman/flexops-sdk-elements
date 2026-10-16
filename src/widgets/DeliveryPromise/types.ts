@@ -12,6 +12,8 @@ export interface DeliveryPromiseProps {
   destinationPostalCode?: string;
   /** Destination country code (default: "US"). */
   destinationCountry?: string;
+  /** Package weight in ounces used to pick the services quoted (default: 16). */
+  weightOz?: number;
   /** Order cutoff hour in 24h format (default: 15 = 3pm). Orders after this hour ship next business day. */
   cutoffHour?: number;
   /** Cutoff timezone IANA identifier (default: "America/New_York"). */
@@ -22,7 +24,7 @@ export interface DeliveryPromiseProps {
   layout?: 'inline' | 'card';
   /** Hide the carrier name and only show the delivery date (default: false). */
   hideCarrier?: boolean;
-  /** Called when delivery estimates are loaded. */
+  /** Called when delivery estimates are loaded, fastest first. `confidencePercent` is always null. */
   onEstimateLoaded?: (estimates: DeliveryEstimate[]) => void;
   /** Called on error. */
   onError?: (error: Error) => void;

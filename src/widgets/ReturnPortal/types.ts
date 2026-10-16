@@ -3,6 +3,11 @@
 import type { ReturnConfirmation } from '../../api/types';
 import type { FlexOpsTheme } from '../../provider/types';
 
+/**
+ * Props for `ReturnPortal`. The widget is not available yet (no Gateway shopper return
+ * endpoint), so only `onError`, `className`, `style` and `theme` take effect; the order,
+ * reason and submit props are kept so existing integrations still compile.
+ */
 export interface ReturnPortalProps {
   /** Pre-fill order number (e.g., from URL parameter). */
   defaultOrderNumber?: string;

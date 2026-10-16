@@ -87,16 +87,28 @@ function getTimeUntilCutoff(cutoffHour: number, cutoffTimezone: string): { hours
   return { hours: Math.floor(diff / 60), minutes: diff % 60 };
 }
 
+/** Format a date as a local `YYYY-MM-DD` string. */
+function toLocalIsoDate(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 /**
  * Embeddable delivery promise widget. Shows estimated delivery dates
  * for a given origin and destination, with cutoff-time awareness.
  *
+ * Transit days come from the Gateway's anonymous public rate estimate
+ * (`POST /api/rates/public-estimate`), so no API key is needed. They are
+ * the Gateway's fixed per-service estimates, not carrier commitments, and
+ * carry no on-time confidence.
+ *
  * @example
  * ```tsx
- * <FlexOpsProvider config={{ baseUrl: 'https://gateway.flexops.io', apiKey: 'fxk_live_...' }}>
+ * <FlexOpsProvider config={{ baseUrl: 'https://gateway.flexops.io' }}>
  *   <DeliveryPromise
  *     originPostalCode="10001"
  *     destinationPostalCode="90210"
+ *     weightOz={16}
  *     cutoffHour={15}
  *   />
  * </FlexOpsProvider>
@@ -107,6 +119,7 @@ export function DeliveryPromise({
   originCountry = 'US',
   destinationPostalCode: destPropZip,
   destinationCountry = 'US',
+  weightOz = 16,
   cutoffHour = 15,
   cutoffTimezone = 'America/New_York',
   maxResults = 1,
@@ -124,11 +137,18 @@ export function DeliveryPromise({
 
   const [destZip, setDestZip] = useState(destPropZip ?? '');
   const [loading, setLoading] = useState(false);
-  const [estimates, setEstimates] = useState<DeliveryEstimate[] | null>(null);
+  const [estimates, setEstimates] = useState<{ estimate: DeliveryEstimate; resolvedDate: Date }[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadEstimates = useCallback(async (zip: string) => {
     if (!zip || !originPostalCode) return;
+
+    if (!Number.isFinite(weightOz) || weightOz <= 0) {
+      const message = 'DeliveryPromise needs a package weight above 0 oz.';
+      setError(message);
+      onError?.(new Error(message));
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -139,9 +159,19 @@ export function DeliveryPromise({
         originCountry: originCountry.trim(),
         destinationPostalCode: zip.trim(),
         destinationCountry: destinationCountry.trim(),
+        weightOz,
       });
-      setEstimates(response.estimates);
-      onEstimateLoaded?.(response.estimates);
+      // Resolve each date from the next ship date, which honours the order cutoff.
+      const shipDate = getNextShipDate(cutoffHour, cutoffTimezone);
+      const resolved = response.estimates.map((transit) => {
+        const resolvedDate = addBusinessDays(shipDate, transit.businessDaysInTransit);
+        return {
+          estimate: { ...transit, estimatedDeliveryDate: toLocalIsoDate(resolvedDate), confidencePercent: null },
+          resolvedDate,
+        };
+      });
+      setEstimates(resolved);
+      onEstimateLoaded?.(resolved.map((r) => r.estimate));
     } catch (err) {
       const message = err instanceof Error ? err.message
         : (err as { message?: string }).message ?? 'Failed to fetch delivery estimate';
@@ -150,7 +180,7 @@ export function DeliveryPromise({
     } finally {
       setLoading(false);
     }
-  }, [config, originPostalCode, originCountry, destinationCountry, onEstimateLoaded, onError]);
+  }, [config, originPostalCode, originCountry, destinationCountry, weightOz, cutoffHour, cutoffTimezone, onEstimateLoaded, onError]);
 
   // Auto-fetch when destination ZIP is provided via prop
   useEffect(() => {
@@ -174,13 +204,9 @@ export function DeliveryPromise({
 
   // Compute cutoff countdown
   const timeUntilCutoff = getTimeUntilCutoff(cutoffHour, cutoffTimezone);
-  const shipDate = getNextShipDate(cutoffHour, cutoffTimezone);
 
-  // Resolve delivery dates from transit days + ship date
-  const resolvedEstimates = estimates?.slice(0, maxResults).map((est) => ({
-    ...est,
-    resolvedDate: addBusinessDays(shipDate, est.businessDaysInTransit),
-  }));
+  // Estimates arrive fastest first
+  const resolvedEstimates = estimates?.slice(0, maxResults);
 
   const containerStyle = layout === 'inline' ? s.containerInline : s.container;
 
@@ -228,7 +254,7 @@ export function DeliveryPromise({
 
           {resolvedEstimates.length === 1 ? (
             <DeliveryPromiseResult
-              estimate={resolvedEstimates[0]}
+              estimate={resolvedEstimates[0].estimate}
               resolvedDate={resolvedEstimates[0].resolvedDate}
               hideCarrier={hideCarrier}
               theme={theme}
@@ -238,7 +264,7 @@ export function DeliveryPromise({
               {resolvedEstimates.map((est, i) => (
                 <li key={i}>
                   <DeliveryPromiseResult
-                    estimate={est}
+                    estimate={est.estimate}
                     resolvedDate={est.resolvedDate}
                     hideCarrier={hideCarrier}
                     theme={theme}

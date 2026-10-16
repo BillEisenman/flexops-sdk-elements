@@ -54,20 +54,32 @@ export interface WidgetTrackingResponse {
   branding: WidgetBranding | null;
 }
 
-// Mirrors Gateway DeliveryPromiseDTOs
+// Delivery estimates. The Gateway has no delivery-estimate endpoint; the transit days come
+// from the public rate estimate (Gateway PublicRateDTOs, POST /api/rates/public-estimate).
 
 export interface DeliveryEstimateRequest {
   originPostalCode: string;
   originCountry: string;
   destinationPostalCode: string;
   destinationCountry: string;
+  /** Package weight in ounces. The public rate estimate requires one. */
+  weightOz: number;
+}
+
+/** Transit time for one carrier service, fastest first. */
+export interface DeliveryTransitEstimate {
+  carrierName: string;
+  serviceName: string;
+  businessDaysInTransit: number;
 }
 
 export interface DeliveryEstimate {
   carrierName: string;
   serviceName: string;
+  /** Local `YYYY-MM-DD` date: the next ship date plus the business days in transit. */
   estimatedDeliveryDate: string;
   businessDaysInTransit: number;
+  /** Always null: the Gateway's public estimate carries no on-time confidence. */
   confidencePercent: number | null;
 }
 
@@ -104,12 +116,8 @@ export interface AddressValidationResult {
   isResidential?: boolean | null;
 }
 
-// Mirrors Gateway ReturnPortalDTOs
-
-export interface ReturnEligibilityRequest {
-  orderNumber: string;
-  emailOrZip: string;
-}
+// Shopper return types. The Gateway has no shopper-facing return endpoint yet, so the
+// ReturnPortal widget makes no request; these types stay exported for compatibility.
 
 export interface ReturnableItem {
   lineItemId: string;
@@ -127,12 +135,6 @@ export interface ReturnEligibilityResponse {
   items: ReturnableItem[];
   returnWindowCloses: string | null;
   message: string | null;
-}
-
-export interface ReturnSubmission {
-  orderNumber: string;
-  emailOrZip: string;
-  items: { lineItemId: string; quantity: number; reason: string }[];
 }
 
 export interface ReturnConfirmation {

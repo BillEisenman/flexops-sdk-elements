@@ -1,7 +1,7 @@
 // Copyright (c) FlexOps, LLC. All rights reserved.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fetchRates, fetchDeliveryEstimate, validateAddress, checkReturnEligibility, submitReturn, createLabel, fetchTracking, classifyHsCode } from '../src/api/client';
+import { fetchRates, fetchDeliveryEstimate, validateAddress, createLabel, fetchTracking, classifyHsCode } from '../src/api/client';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -89,42 +89,54 @@ describe('fetchRates', () => {
 describe('fetchDeliveryEstimate', () => {
   const config = { baseUrl: 'https://api.test.com' };
 
-  it('sends POST to delivery-estimate endpoint with correct body', async () => {
+  // The Gateway has no delivery-estimate route; transit days come from the anonymous
+  // PublicRatesController (api/rates/public-estimate) as estimatedDeliveryDays.
+  it('posts the public rate estimate request and returns transit times fastest first', async () => {
     const mockResponse = {
-      estimates: [{
-        carrierName: 'USPS', serviceName: 'Priority Mail',
-        estimatedDeliveryDate: '2026-04-04', businessDaysInTransit: 2, confidencePercent: 97,
-      }],
+      rates: [
+        { carrierName: 'USPS', serviceName: 'Priority Mail', estimatedRate: 8.66, estimatedDeliveryDays: 3, carrierLogoUrl: null },
+        { carrierName: 'USPS', serviceName: 'Priority Mail Express', estimatedRate: 28.32, estimatedDeliveryDays: 2, carrierLogoUrl: null },
+        { carrierName: 'DHL', serviceName: 'Express', estimatedRate: 40, estimatedDeliveryDays: null, carrierLogoUrl: null },
+        { carrierName: 'UPS', serviceName: 'Ground', estimatedRate: 10.74, estimatedDeliveryDays: 5, carrierLogoUrl: null },
+      ],
       generatedAtUtc: '2026-04-01T12:00:00Z',
+      disclaimer: 'Estimates only',
     };
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockResponse) });
 
     const result = await fetchDeliveryEstimate(config, {
       originPostalCode: '10001', originCountry: 'US',
-      destinationPostalCode: '90210', destinationCountry: 'US',
+      destinationPostalCode: '90210', destinationCountry: 'US', weightOz: 16,
     });
 
-    expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.test.com/api/shipping/delivery-estimate',
-      expect.objectContaining({
-        method: 'POST',
-        headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
-      }),
-    );
-    expect(result.estimates).toHaveLength(1);
-    expect(result.estimates[0].carrierName).toBe('USPS');
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url).toBe('https://api.test.com/api/rates/public-estimate');
+    expect(init.method).toBe('POST');
+    expect(init.headers['Content-Type']).toBe('application/json');
+    expect(JSON.parse(init.body)).toEqual({
+      fromPostalCode: '10001', fromCountry: 'US', toPostalCode: '90210', toCountry: 'US', weightOz: 16,
+    });
+    expect(result).toEqual({
+      generatedAtUtc: '2026-04-01T12:00:00Z',
+      estimates: [
+        { carrierName: 'USPS', serviceName: 'Priority Mail Express', businessDaysInTransit: 2 },
+        { carrierName: 'USPS', serviceName: 'Priority Mail', businessDaysInTransit: 3 },
+        { carrierName: 'UPS', serviceName: 'Ground', businessDaysInTransit: 5 },
+      ],
+    });
   });
 
   it('includes API key header when provided', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ estimates: [], generatedAtUtc: '' }) });
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ rates: [], generatedAtUtc: '' }) });
 
     await fetchDeliveryEstimate({ baseUrl: 'https://api.test.com', apiKey: 'fxk_test_456' }, {
       originPostalCode: '10001', originCountry: 'US',
-      destinationPostalCode: '90210', destinationCountry: 'US',
+      destinationPostalCode: '90210', destinationCountry: 'US', weightOz: 16,
     });
 
     const headers = mockFetch.mock.calls[0][1].headers;
     expect(headers['X-API-Key']).toBe('fxk_test_456');
+    expect(headers.Authorization).toBeUndefined();
   });
 
   it('throws on non-OK response', async () => {
@@ -135,7 +147,7 @@ describe('fetchDeliveryEstimate', () => {
 
     await expect(fetchDeliveryEstimate(config, {
       originPostalCode: 'bad', originCountry: 'US',
-      destinationPostalCode: '90210', destinationCountry: 'US',
+      destinationPostalCode: '90210', destinationCountry: 'US', weightOz: 16,
     })).rejects.toEqual(expect.objectContaining({ message: 'Invalid postal code format', status: 422 }));
   });
 });
@@ -179,31 +191,34 @@ describe('validateAddress', () => {
   });
 });
 
-describe('checkReturnEligibility', () => {
-  const config = { baseUrl: 'https://api.test.com' };
+describe('Gateway routes (#33)', () => {
+  // Every route the client may call, checked against Gateway controllers and the
+  // Developer Docs OpenAPI spec. Gateway routing is case-insensitive.
+  const gatewayRoutes = [
+    'POST /api/rates/public-estimate',
+    'POST /api/addresses/validate',
+    'POST /api/shipping/labels',
+    'GET /api/widget/tracking/',
+    'POST /api/shipping/hs-codes/classify',
+  ];
 
-  it('sends POST to returns/eligibility endpoint', async () => {
-    const mockResponse = { eligible: true, orderNumber: 'ORD-123', items: [], returnWindowCloses: null, message: null };
-    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockResponse) });
+  it('never calls a route the Gateway does not serve', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ rates: [], generatedAtUtc: '' }) });
+    const config = { baseUrl: 'https://api.test.com' };
 
-    const result = await checkReturnEligibility(config, { orderNumber: 'ORD-123', emailOrZip: 'test@test.com' });
+    await fetchRates(config, { fromPostalCode: '1', fromCountry: 'US', toPostalCode: '2', toCountry: 'US', weightOz: 1 });
+    await fetchDeliveryEstimate(config, { originPostalCode: '1', originCountry: 'US', destinationPostalCode: '2', destinationCountry: 'US', weightOz: 1 });
 
-    expect(mockFetch).toHaveBeenCalledWith('https://api.test.com/api/returns/eligibility', expect.objectContaining({ method: 'POST' }));
-    expect(result.eligible).toBe(true);
+    for (const [url, init] of mockFetch.mock.calls) {
+      const call = `${init.method} ${(url as string).replace('https://api.test.com', '')}`;
+      expect(gatewayRoutes.some((route) => call.startsWith(route))).toBe(true);
+    }
   });
-});
 
-describe('submitReturn', () => {
-  const config = { baseUrl: 'https://api.test.com' };
-
-  it('sends POST to returns/submit endpoint', async () => {
-    const mockResponse = { rmaNumber: 'RMA-456', returnLabelUrl: null, qrCodeUrl: null, instructions: 'Ship it back' };
-    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockResponse) });
-
-    const result = await submitReturn(config, { orderNumber: 'ORD-123', emailOrZip: 'test@test.com', items: [{ lineItemId: 'li-1', quantity: 1, reason: 'Damaged' }] });
-
-    expect(mockFetch).toHaveBeenCalledWith('https://api.test.com/api/returns/submit', expect.objectContaining({ method: 'POST' }));
-    expect(result.rmaNumber).toBe('RMA-456');
+  it('no longer exports clients for the missing shopper return routes', async () => {
+    const client = await import('../src/api/client');
+    expect('checkReturnEligibility' in client).toBe(false);
+    expect('submitReturn' in client).toBe(false);
   });
 });
 
@@ -257,6 +272,26 @@ describe('createLabel', () => {
     });
 
     expect(mockFetch.mock.calls[0][1].headers['X-API-Key']).toBe('fxk_test_789');
+    expect(mockFetch.mock.calls[0][1].headers.Authorization).toBeUndefined();
+  });
+
+  // Gateway ShippingLabel carries carrierCode but no serviceCode.
+  it('reports the service the request bought, since the Gateway label omits it', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({
+      labelId: 'lbl_1', carrierCode: 'USPS', trackingNumber: '9400', labelData: 'JVBERi0=', labelFormat: 'PDF',
+      rate: 9.35, currency: 'USD', createdAt: '2026-10-16T00:00:00Z', returnLabelData: null, orderId: null, isSandbox: true,
+    }) });
+
+    const result = await createLabel({ baseUrl: 'https://api.test.com' }, {
+      from: { street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
+      to: { street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
+      weightOz: 1, carrier: 'usps', service: 'PRIORITY', maximumPostageAmount: 20, hazmatClassification: 0,
+    });
+
+    if ('status' in result) throw new Error('Expected sandbox label');
+    expect(result.service).toBe('PRIORITY');
+    expect(result.carrier).toBe('USPS');
+    expect(result.labelUrl).toBe('data:application/pdf;base64,JVBERi0=');
   });
 });
 

@@ -15,24 +15,14 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
   </FlexOpsProvider>
 );
 
+// Gateway PublicRatesController (api/rates/public-estimate) response; out of transit order on purpose.
 const mockEstimateResponse = {
-  estimates: [
-    {
-      carrierName: 'USPS',
-      serviceName: 'Priority Mail',
-      estimatedDeliveryDate: '2026-04-04',
-      businessDaysInTransit: 2,
-      confidencePercent: 97,
-    },
-    {
-      carrierName: 'UPS',
-      serviceName: 'Ground',
-      estimatedDeliveryDate: '2026-04-07',
-      businessDaysInTransit: 5,
-      confidencePercent: 94,
-    },
+  rates: [
+    { carrierName: 'UPS', serviceName: 'Ground', estimatedRate: 10.74, estimatedDeliveryDays: 5, carrierLogoUrl: null },
+    { carrierName: 'USPS', serviceName: 'Priority Mail', estimatedRate: 8.66, estimatedDeliveryDays: 2, carrierLogoUrl: null },
   ],
   generatedAtUtc: '2026-04-01T12:00:00Z',
+  disclaimer: 'Rates are estimates.',
 };
 
 beforeEach(() => {
@@ -74,14 +64,15 @@ describe('DeliveryPromise', () => {
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.test.com/api/shipping/delivery-estimate',
+        'https://api.test.com/api/rates/public-estimate',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({
-            originPostalCode: '10001',
-            originCountry: 'US',
-            destinationPostalCode: '90210',
-            destinationCountry: 'US',
+            fromPostalCode: '10001',
+            fromCountry: 'US',
+            toPostalCode: '90210',
+            toCountry: 'US',
+            weightOz: 16,
           }),
         }),
       );
@@ -106,7 +97,35 @@ describe('DeliveryPromise', () => {
     });
   });
 
-  it('displays confidence percentage when available', async () => {
+  it('sends the configured package weight', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockEstimateResponse) });
+
+    render(
+      <DeliveryPromise originPostalCode="10001" destinationPostalCode="90210" weightOz={8} />,
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalled();
+    });
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body).weightOz).toBe(8);
+  });
+
+  it('refuses a non-positive weight without calling the Gateway', async () => {
+    const onError = vi.fn();
+    render(
+      <DeliveryPromise originPostalCode="10001" destinationPostalCode="90210" weightOz={0} onError={onError} />,
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('DeliveryPromise needs a package weight above 0 oz.')).toBeInTheDocument();
+    });
+    expect(onError).toHaveBeenCalled();
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('shows no on-time confidence, which the Gateway does not provide', async () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockEstimateResponse) });
 
     render(
@@ -115,8 +134,9 @@ describe('DeliveryPromise', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('97% on-time')).toBeInTheDocument();
+      expect(screen.getByTestId('delivery-date')).toBeInTheDocument();
     });
+    expect(screen.queryByText(/on-time/)).not.toBeInTheDocument();
   });
 
   it('hides carrier info when hideCarrier is true', async () => {
@@ -211,8 +231,12 @@ describe('DeliveryPromise', () => {
     );
 
     await waitFor(() => {
-      expect(onEstimateLoaded).toHaveBeenCalledWith(mockEstimateResponse.estimates);
+      expect(onEstimateLoaded).toHaveBeenCalled();
     });
+    const estimates = onEstimateLoaded.mock.calls[0][0];
+    expect(estimates.map((e: { carrierName: string; businessDaysInTransit: number; confidencePercent: number | null }) =>
+      [e.carrierName, e.businessDaysInTransit, e.confidencePercent])).toEqual([['USPS', 2, null], ['UPS', 5, null]]);
+    for (const e of estimates) expect(e.estimatedDeliveryDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   it('renders inline layout without border and heading', () => {
@@ -243,7 +267,7 @@ describe('DeliveryPromise', () => {
   it('shows empty state when no estimates returned', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ estimates: [], generatedAtUtc: '2026-04-01T12:00:00Z' }),
+      json: () => Promise.resolve({ rates: [], generatedAtUtc: '2026-04-01T12:00:00Z', disclaimer: '' }),
     });
 
     render(
