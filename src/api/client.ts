@@ -36,7 +36,8 @@ function stripTrailingSlash(url: string): string {
   return url.endsWith('/') ? url.slice(0, -1) : url;
 }
 
-async function handleResponse<T>(response: Response): Promise<T> {
+/** Parses a Gateway response. A 2xx with no body (204, or Content-Length 0) yields undefined. */
+async function handleResponse<T>(response: Response): Promise<T | undefined> {
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
     try {
@@ -48,7 +49,18 @@ async function handleResponse<T>(response: Response): Promise<T> {
     const error: FlexOpsApiError = { message, status: response.status };
     throw error;
   }
+  if (response.status === 204 || response.headers?.get('content-length') === '0') return undefined;
   return response.json() as Promise<T>;
+}
+
+/** Like handleResponse, for calls whose widget needs a body: an empty success is an error. */
+async function handleBody<T>(response: Response): Promise<T> {
+  const body = await handleResponse<T>(response);
+  if (body === undefined) {
+    const error: FlexOpsApiError = { message: 'Gateway returned no content.', status: response.status };
+    throw error;
+  }
+  return body;
 }
 
 /** Fetch shipping rate estimates from the public rates endpoint. */
@@ -64,7 +76,7 @@ export async function fetchRates(
     body: JSON.stringify(request),
     signal,
   });
-  return handleResponse<PublicRateEstimateResponse>(response);
+  return handleBody<PublicRateEstimateResponse>(response);
 }
 
 /**
@@ -112,7 +124,7 @@ export async function validateAddress(
     }),
     signal,
   });
-  const result = await handleResponse<GatewayAddressValidationResult>(response);
+  const result = await handleBody<GatewayAddressValidationResult>(response);
   const suggested = result.suggestedAddress;
   const normalizedAddress = suggested
     ? { street1: suggested.line1, street2: suggested.line2 ?? null, city: suggested.city,
@@ -174,7 +186,8 @@ export async function createLabel(
     isSandbox?: boolean; labelId: string; trackingNumber: string; carrierCode: string;
     labelData: string; rate: number;
   }>(response);
-  if (result.status === 'Preview') {
+  // An empty success is neither a preview nor a label: fail closed so the purchase stays unresolved.
+  if (result?.status === 'Preview') {
     if (confirmationToken || !result.confirmationToken || result.currency !== 'USD' ||
         !Number.isFinite(result.quotedPostageAmount) || result.quotedPostageAmount <= 0 ||
         result.maximumPostageAmount !== request.maximumPostageAmount ||
@@ -183,7 +196,7 @@ export async function createLabel(
     }
     return result;
   }
-  if (!result.trackingNumber || (!confirmationToken && result.isSandbox !== true))
+  if (!result?.trackingNumber || (!confirmationToken && result.isSandbox !== true))
     throw new Error('Gateway did not return a preview or a confirmed sandbox label.');
   return { labelId: result.labelId, trackingNumber: result.trackingNumber,
     carrier: result.carrierCode, service: request.service ?? '', cost: result.rate,
@@ -203,7 +216,7 @@ export async function fetchTracking(
     headers: buildHeaders(config),
     signal,
   });
-  return handleResponse<WidgetTrackingResponse>(response);
+  return handleBody<WidgetTrackingResponse>(response);
 }
 
 /** Classify a product into HS codes. */
@@ -219,5 +232,5 @@ export async function classifyHsCode(
     body: JSON.stringify(request),
     signal,
   });
-  return handleResponse<HsCodeClassifyResponse>(response);
+  return handleBody<HsCodeClassifyResponse>(response);
 }
