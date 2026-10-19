@@ -94,6 +94,8 @@ Each widget calls one FlexOps Gateway route. A configured `apiKey` is sent as `X
 
 `DeliveryPromise` turns each service's `estimatedDeliveryDays` into a date after the next ship date, fastest first. The days are the Gateway's fixed per-service estimates, not carrier commitments, and carry no on-time confidence. Set `weightOz` (default 16) to the typical parcel weight.
 
+These are the only Gateway calls Elements makes, all documented public operations; none goes through the legacy `/api/ApiProxy`. `npm test` checks every API client function against the documented operation list in `tests/fixtures/gateway-operations.json`. Only `ShippingLabel` sends an `Idempotency-Key` (one per purchase, reused on **Retry Same Purchase**); Elements never retries a request on its own. An empty success response (204) is reported as an error, and for a label it leaves the purchase unresolved rather than treating it as bought.
+
 ## Theming
 
 Override any theme property via the provider or individual widgets:
