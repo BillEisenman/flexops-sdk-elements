@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.0.0 (unreleased)
+## 3.0.0 (2026-10-19)
 
 Releases the Gateway alignment and HAZMAT declaration work merged since 2.0.0, ahead of the Gateway's order-less HAZMAT Enforce rule. It is a major release because public exports and props changed.
 
