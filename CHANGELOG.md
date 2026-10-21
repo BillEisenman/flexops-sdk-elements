@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.1.0 (unreleased)
+
+### Added
+
+- `DeliveryPromise` prop `service`: quote only the service you ship with, such as `"Ground Advantage"` or `"USPS Priority Mail"`, matched on the whole service name, or carrier and service name, ignoring case. Without it the widget still shows the fastest service, which for USPS is Priority Mail Express. When the estimate does not quote that service, the widget says so and does not call `onError`; `onEstimateLoaded` receives only the matching service.
+
 ## 3.0.0 (2026-10-19)
 
 Releases the Gateway alignment and HAZMAT declaration work merged since 2.0.0, ahead of the Gateway's order-less HAZMAT Enforce rule. It is a major release because public exports and props changed.

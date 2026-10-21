@@ -93,6 +93,13 @@ function toLocalIsoDate(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+/** Whether a transit estimate is the named service: its whole service name, or carrier and service name, ignoring case. */
+function isService(transit: { carrierName: string; serviceName: string }, service: string): boolean {
+  const wanted = service.trim().toLowerCase();
+  return transit.serviceName.toLowerCase() === wanted
+    || `${transit.carrierName} ${transit.serviceName}`.toLowerCase() === wanted;
+}
+
 /**
  * Embeddable delivery promise widget. Shows estimated delivery dates
  * for a given origin and destination, with cutoff-time awareness.
@@ -109,6 +116,7 @@ function toLocalIsoDate(date: Date): string {
  *     originPostalCode="10001"
  *     destinationPostalCode="90210"
  *     weightOz={16}
+ *     service="Ground Advantage"
  *     cutoffHour={15}
  *   />
  * </FlexOpsProvider>
@@ -122,6 +130,7 @@ export function DeliveryPromise({
   weightOz = 16,
   cutoffHour = 15,
   cutoffTimezone = 'America/New_York',
+  service,
   maxResults = 1,
   layout = 'card',
   hideCarrier = false,
@@ -139,6 +148,7 @@ export function DeliveryPromise({
   const [loading, setLoading] = useState(false);
   const [estimates, setEstimates] = useState<{ estimate: DeliveryEstimate; resolvedDate: Date }[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const wantedService = service?.trim() || undefined;
 
   const loadEstimates = useCallback(async (zip: string) => {
     if (!zip || !originPostalCode) return;
@@ -163,7 +173,10 @@ export function DeliveryPromise({
       });
       // Resolve each date from the next ship date, which honours the order cutoff.
       const shipDate = getNextShipDate(cutoffHour, cutoffTimezone);
-      const resolved = response.estimates.map((transit) => {
+      const quoted = wantedService
+        ? response.estimates.filter((transit) => isService(transit, wantedService))
+        : response.estimates;
+      const resolved = quoted.map((transit) => {
         const resolvedDate = addBusinessDays(shipDate, transit.businessDaysInTransit);
         return {
           estimate: { ...transit, estimatedDeliveryDate: toLocalIsoDate(resolvedDate), confidencePercent: null },
@@ -180,7 +193,7 @@ export function DeliveryPromise({
     } finally {
       setLoading(false);
     }
-  }, [config, originPostalCode, originCountry, destinationCountry, weightOz, cutoffHour, cutoffTimezone, onEstimateLoaded, onError]);
+  }, [config, originPostalCode, originCountry, destinationCountry, weightOz, cutoffHour, cutoffTimezone, wantedService, onEstimateLoaded, onError]);
 
   // Auto-fetch when destination ZIP is provided via prop
   useEffect(() => {
@@ -249,7 +262,11 @@ export function DeliveryPromise({
       {resolvedEstimates && !loading && (
         <>
           {resolvedEstimates.length === 0 && (
-            <div style={s.loading}>No delivery estimates available for this destination.</div>
+            <div style={s.loading}>
+              {wantedService
+                ? `No delivery estimate for ${wantedService} to this destination.`
+                : 'No delivery estimates available for this destination.'}
+            </div>
           )}
 
           {resolvedEstimates.length === 1 ? (

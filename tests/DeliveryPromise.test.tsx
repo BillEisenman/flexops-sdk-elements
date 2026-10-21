@@ -280,6 +280,77 @@ describe('DeliveryPromise', () => {
     });
   });
 
+  describe('service', () => {
+    // Gateway public estimate with USPS only; Express is the fastest, so it wins without `service`.
+    const uspsResponse = {
+      rates: [
+        { carrierName: 'USPS', serviceName: 'Ground Advantage', estimatedRate: 4.82, estimatedDeliveryDays: 5, carrierLogoUrl: null },
+        { carrierName: 'USPS', serviceName: 'Priority Mail', estimatedRate: 8.66, estimatedDeliveryDays: 3, carrierLogoUrl: null },
+        { carrierName: 'USPS', serviceName: 'Priority Mail Express', estimatedRate: 28.32, estimatedDeliveryDays: 2, carrierLogoUrl: null },
+      ],
+      generatedAtUtc: '2026-04-01T12:00:00Z',
+      disclaimer: 'Rates are estimates.',
+    };
+
+    it('quotes the fastest service when no service is set', async () => {
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(uspsResponse) });
+
+      render(<DeliveryPromise originPostalCode="10001" destinationPostalCode="90210" />, { wrapper });
+
+      await waitFor(() => {
+        expect(screen.getByText('via USPS Priority Mail Express')).toBeInTheDocument();
+      });
+    });
+
+    it('quotes only the named service, not a faster one', async () => {
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(uspsResponse) });
+      const onEstimateLoaded = vi.fn();
+
+      render(
+        <DeliveryPromise originPostalCode="10001" destinationPostalCode="90210" service="Ground Advantage"
+          maxResults={3} onEstimateLoaded={onEstimateLoaded} />,
+        { wrapper },
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('via USPS Ground Advantage')).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/via USPS Priority Mail/)).not.toBeInTheDocument();
+      expect(onEstimateLoaded.mock.calls[0][0].map((e: { serviceName: string; businessDaysInTransit: number }) =>
+        [e.serviceName, e.businessDaysInTransit])).toEqual([['Ground Advantage', 5]]);
+    });
+
+    it('matches the whole name, ignoring case, with or without the carrier', async () => {
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(uspsResponse) });
+
+      render(
+        <DeliveryPromise originPostalCode="10001" destinationPostalCode="90210" service=" usps priority mail " maxResults={3} />,
+        { wrapper },
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('via USPS Priority Mail')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('via USPS Priority Mail Express')).not.toBeInTheDocument();
+    });
+
+    it('says when the named service is not quoted, without an error', async () => {
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(uspsResponse) });
+      const onError = vi.fn();
+
+      render(
+        <DeliveryPromise originPostalCode="10001" destinationPostalCode="90210" service="Ground" onError={onError} />,
+        { wrapper },
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('No delivery estimate for Ground to this destination.')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('delivery-date')).not.toBeInTheDocument();
+      expect(onError).not.toHaveBeenCalled();
+    });
+  });
+
   it('does not fetch when ZIP input is empty', async () => {
     render(<DeliveryPromise originPostalCode="10001" />, { wrapper });
 

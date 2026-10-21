@@ -18,6 +18,12 @@ export interface DeliveryPromiseProps {
   cutoffHour?: number;
   /** Cutoff timezone IANA identifier (default: "America/New_York"). */
   cutoffTimezone?: string;
+  /**
+   * Only quote this service, e.g. "Ground Advantage" or "USPS Priority Mail": the service you ship with, so the
+   * date is not a faster service's. Matches the whole service name, or carrier and service name, ignoring case.
+   * Default: every service, fastest first.
+   */
+  service?: string;
   /** Only show the fastest N results (default: 1). */
   maxResults?: number;
   /** Display layout. "inline" is compact for product pages, "card" has a border. Default: "card". */
