@@ -39,7 +39,7 @@ Wraps all FlexOps widgets with configuration and theming.
 <FlexOpsProvider
   config={{
     baseUrl: 'https://gateway.flexops.io',  // Required
-    apiKey: 'fxk_live_...',              // Sent as X-API-Key; needed by AddressForm, ShippingLabel, HsCodeLookup
+    apiKey: 'live_...',                  // Sent as X-API-Key; needed by AddressForm, ShippingLabel, HsCodeLookup
     theme: {                              // Optional — override default styling
       primaryColor: '#your-brand-color',
       fontFamily: 'Inter, sans-serif',

@@ -13,7 +13,7 @@ import { getStyles } from './styles';
  *
  * @example
  * ```tsx
- * <FlexOpsProvider config={{ baseUrl: 'https://gateway.flexops.io', apiKey: 'fxk_live_...' }}>
+ * <FlexOpsProvider config={{ baseUrl: 'https://gateway.flexops.io', apiKey: 'live_...' }}>
  *   <AddressForm onAddressValidated={(result) => console.log(result)} />
  * </FlexOpsProvider>
  * ```
