@@ -19,7 +19,7 @@ function confidenceColor(percent: number): string {
  *
  * @example
  * ```tsx
- * <FlexOpsProvider config={{ baseUrl: 'https://gateway.flexops.io', apiKey: 'fxk_live_...' }}>
+ * <FlexOpsProvider config={{ baseUrl: 'https://gateway.flexops.io', apiKey: 'live_...' }}>
  *   <HsCodeLookup onCodeSelected={(code) => console.log(code)} />
  * </FlexOpsProvider>
  * ```

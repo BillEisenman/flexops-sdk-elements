@@ -36,7 +36,7 @@ export const defaultTheme: FlexOpsTheme = {
 export interface FlexOpsConfig {
   /** Base URL of the FlexOps Gateway API. */
   baseUrl: string;
-  /** Optional API key for authenticated endpoints (fxk_live_... or fxk_test_...). */
+  /** Optional API key for authenticated endpoints (live_... or test_...). */
   apiKey?: string;
   /** Optional workspace ID for attribution. */
   workspaceId?: string;
