@@ -2,6 +2,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fetchRates, fetchDeliveryEstimate, validateAddress, createLabel, fetchTracking, classifyHsCode } from '../src/api/client';
+import { FlexOpsApiError } from '../src/api/types';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -83,6 +84,45 @@ describe('fetchRates', () => {
     await expect(fetchRates(config, {
       fromPostalCode: '10001', fromCountry: 'US', toPostalCode: '90210', toCountry: 'US', weightOz: 16,
     })).rejects.toEqual(expect.objectContaining({ message: 'Request failed with status 500', status: 500 }));
+  });
+
+  it('throws a FlexOpsApiError carrying the Gateway envelope errorCode, status and data', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: () => Promise.resolve({
+        success: false, message: 'Declare the parcel contents.', errors: null,
+        errorCode: 'HazmatDeclarationRequired', data: { field: 'hazmatClassification' },
+      }),
+    });
+
+    const error = await fetchRates(config, {
+      fromPostalCode: '10001', fromCountry: 'US', toPostalCode: '90210', toCountry: 'US', weightOz: 16,
+    }).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(FlexOpsApiError);
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toMatchObject({
+      name: 'FlexOpsApiError', message: 'Declare the parcel contents.', status: 400,
+      errorCode: 'HazmatDeclarationRequired', data: { field: 'hazmatClassification' },
+    });
+  });
+
+  it('leaves errorCode and data undefined when the envelope has neither', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: () => Promise.resolve({ success: false, message: 'Conflict', errorCode: null, data: null }),
+    });
+
+    const error = await fetchRates(config, {
+      fromPostalCode: '10001', fromCountry: 'US', toPostalCode: '90210', toCountry: 'US', weightOz: 16,
+    }).catch((e: unknown) => e) as FlexOpsApiError;
+
+    expect(error).toBeInstanceOf(FlexOpsApiError);
+    expect(error.status).toBe(409);
+    expect(error.errorCode).toBeUndefined();
+    expect(error.data).toBeUndefined();
   });
 });
 

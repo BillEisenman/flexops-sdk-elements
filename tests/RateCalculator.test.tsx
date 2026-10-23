@@ -136,7 +136,7 @@ describe('RateCalculator', () => {
       expect(screen.getByText('Server error')).toBeInTheDocument();
     });
 
-    expect(onError).toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ status: 500 }));
   });
 
   it('hides dimensions when showDimensions is false', () => {

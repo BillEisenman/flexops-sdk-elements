@@ -3,6 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import { useFlexOps, resolveTheme } from '../../provider/context';
 import { validateAddress } from '../../api/client';
+import { toError } from '../../utils/errors';
 import type { AddressValidationResult } from '../../api/types';
 import type { AddressFormProps, AddressFormValues } from './types';
 import { getStyles } from './styles';
@@ -98,10 +99,9 @@ export function AddressForm({
       setResult(response);
       onAddressValidated?.(response);
     } catch (err) {
-      const message = err instanceof Error ? err.message
-        : (err as { message?: string }).message ?? 'Address validation failed';
-      setError(message);
-      onError?.(new Error(message));
+      const failure = toError(err, 'Address validation failed');
+      setError(failure.message);
+      onError?.(failure);
     } finally {
       setLoading(false);
     }

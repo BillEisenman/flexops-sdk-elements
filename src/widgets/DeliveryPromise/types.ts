@@ -32,7 +32,10 @@ export interface DeliveryPromiseProps {
   hideCarrier?: boolean;
   /** Called when delivery estimates are loaded, fastest first. `confidencePercent` is always null. */
   onEstimateLoaded?: (estimates: DeliveryEstimate[]) => void;
-  /** Called on error. */
+  /**
+   * Called on error. A failed Gateway request passes the `FlexOpsApiError` itself (check with
+   * `instanceof`), carrying the HTTP `status`, the envelope `errorCode` and any `data`.
+   */
   onError?: (error: Error) => void;
   /** Additional CSS class for the outer container. */
   className?: string;

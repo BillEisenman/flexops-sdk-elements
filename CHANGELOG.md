@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- `onError` now receives the Gateway's error code. Every widget passes a failed request's `FlexOpsApiError` to `onError` as thrown, instead of a new `Error` holding only the message, so an integrator can tell refusals such as `HazmatDeclarationRequired`, `HAZMAT_ATTESTATION_REQUIRED` and `VALIDATION_FAILED` apart. `FlexOpsApiError` extends `Error` and carries the HTTP `status`, the error envelope's `errorCode` (or `undefined`) and its `data` when present; `message` is unchanged. It is now exported: `if (error instanceof FlexOpsApiError && error.errorCode === 'HazmatDeclarationRequired') ...`. The `onError` parameter type is still `Error`, so existing handlers compile unchanged. Errors that are not from a Gateway response, such as a network failure, still arrive as the `Error` that was thrown.
+
 ## 3.1.0 (2026-10-22)
 
 ### Added

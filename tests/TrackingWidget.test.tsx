@@ -148,7 +148,7 @@ describe('TrackingWidget', () => {
       expect(screen.getByText('Tracking link not found')).toBeInTheDocument();
     });
 
-    expect(onError).toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ status: 404 }));
   });
 
   it('calls onTrackingLoaded callback', async () => {

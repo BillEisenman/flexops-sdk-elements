@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useFlexOps, resolveTheme } from '../../provider/context';
 import { fetchTracking } from '../../api/client';
+import { toError } from '../../utils/errors';
 import type { WidgetTrackingResponse } from '../../api/types';
 import type { TrackingWidgetProps } from './types';
 import { TrackingSearch } from './TrackingSearch';
@@ -67,10 +68,9 @@ export function TrackingWidget({
       setData(response);
       onTrackingLoaded?.(response);
     } catch (err) {
-      const message = err instanceof Error ? err.message
-        : (err as { message?: string }).message ?? 'Failed to load tracking';
-      setError(message);
-      onError?.(new Error(message));
+      const failure = toError(err, 'Failed to load tracking');
+      setError(failure.message);
+      onError?.(failure);
     } finally {
       setLoading(false);
     }

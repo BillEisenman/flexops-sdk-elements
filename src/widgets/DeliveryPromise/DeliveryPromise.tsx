@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useFlexOps, resolveTheme } from '../../provider/context';
 import { fetchDeliveryEstimate } from '../../api/client';
+import { toError } from '../../utils/errors';
 import type { DeliveryEstimate } from '../../api/types';
 import type { DeliveryPromiseProps } from './types';
 import { DeliveryPromiseResult } from './DeliveryPromiseResult';
@@ -186,10 +187,9 @@ export function DeliveryPromise({
       setEstimates(resolved);
       onEstimateLoaded?.(resolved.map((r) => r.estimate));
     } catch (err) {
-      const message = err instanceof Error ? err.message
-        : (err as { message?: string }).message ?? 'Failed to fetch delivery estimate';
-      setError(message);
-      onError?.(new Error(message));
+      const failure = toError(err, 'Failed to fetch delivery estimate');
+      setError(failure.message);
+      onError?.(failure);
     } finally {
       setLoading(false);
     }
