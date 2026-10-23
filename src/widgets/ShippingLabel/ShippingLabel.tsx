@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useRef, useId } from 'react';
 import { useFlexOps, resolveTheme } from '../../provider/context';
 import { createLabel } from '../../api/client';
+import { toError } from '../../utils/errors';
 import { isHazmatClassification } from '../../api/types';
 import type { LabelResponse, LabelPurchasePreview, CreateLabelRequest } from '../../api/types';
 import type { ShippingLabelProps } from './types';
@@ -134,10 +135,9 @@ export function ShippingLabel({
       if ('status' in response) setPending({ request, key, preview: response, attempted: false, client: { baseUrl: config.baseUrl, apiKey: config.apiKey } });
       else { setLabel(response); onLabelCreated?.(response); }
     } catch (err) {
-      const message = err instanceof Error ? err.message
-        : (err as { message?: string }).message ?? 'Failed to create label';
-      setError(message);
-      onError?.(new Error(message));
+      const failure = toError(err, 'Failed to create label');
+      setError(failure.message);
+      onError?.(failure);
     } finally {
       busy.current = false;
       setLoading(false);
@@ -159,9 +159,9 @@ export function ShippingLabel({
       if ('status' in result) throw new Error('Purchase did not return a label.');
       setLabel(result); setPending(null); onLabelCreated?.(result);
     } catch (err) {
-      const message = err instanceof Error ? err.message : (err as { message?: string }).message ?? 'Purchase outcome is unknown.';
-      setError(`${message} Retain purchase reference ${pending.key}. Retry this purchase only; do not create another label. Contact an operator if reconciliation is required.`);
-      onError?.(new Error(message));
+      const failure = toError(err, 'Purchase outcome is unknown.');
+      setError(`${failure.message} Retain purchase reference ${pending.key}. Retry this purchase only; do not create another label. Contact an operator if reconciliation is required.`);
+      onError?.(failure);
     } finally { busy.current = false; setLoading(false); }
   }
 

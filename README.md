@@ -96,6 +96,18 @@ Each widget calls one FlexOps Gateway route. A configured `apiKey` is sent as `X
 
 These are the only Gateway calls Elements makes, all documented public operations; none goes through the legacy `/api/ApiProxy`. `npm test` checks every API client function against the documented operation list in `tests/fixtures/gateway-operations.json`. Only `ShippingLabel` sends an `Idempotency-Key` (one per purchase, reused on **Retry Same Purchase**); Elements never retries a request on its own. An empty success response (204) is reported as an error, and for a label it leaves the purchase unresolved rather than treating it as bought.
 
+A failed Gateway request reaches `onError` as a `FlexOpsApiError` (it extends `Error`) carrying the HTTP `status`, the Gateway's machine-readable `errorCode` and any envelope `data`:
+
+```tsx
+import { FlexOpsApiError } from '@flexops/elements';
+
+<ShippingLabel hazmatClassification={HazmatClassification.None} onError={(error) => {
+  if (error instanceof FlexOpsApiError && error.errorCode === 'HAZMAT_ATTESTATION_REQUIRED') {
+    // ask the merchant to attest the HAZMAT shipment
+  }
+}} />
+```
+
 ## Theming
 
 Override any theme property via the provider or individual widgets:

@@ -199,7 +199,25 @@ export interface HsCodeClassifyResponse {
   provider: string;
 }
 
-export interface FlexOpsApiError {
-  message: string;
-  status: number;
+/**
+ * A Gateway request that failed, mirroring the Gateway `ApiResponse` error envelope
+ * (`{ success, message, data, errors, errorCode }`). Widgets pass it to `onError` as thrown, so
+ * an integrator can tell refusals apart: `if (error instanceof FlexOpsApiError && error.errorCode
+ * === 'HazmatDeclarationRequired') ...`.
+ */
+export class FlexOpsApiError extends Error {
+  /** The HTTP status code. */
+  readonly status: number;
+  /** The envelope's machine-readable `errorCode`, such as `VALIDATION_FAILED`, when it sent one. */
+  readonly errorCode: string | undefined;
+  /** The envelope's `data`, when it sent any. */
+  readonly data?: unknown;
+
+  constructor(message: string, status: number, errorCode?: string, data?: unknown) {
+    super(message);
+    this.name = 'FlexOpsApiError';
+    this.status = status;
+    this.errorCode = errorCode;
+    if (data !== undefined) this.data = data;
+  }
 }

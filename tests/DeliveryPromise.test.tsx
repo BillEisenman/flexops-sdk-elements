@@ -214,7 +214,7 @@ describe('DeliveryPromise', () => {
       expect(screen.getByText('Service unavailable')).toBeInTheDocument();
     });
 
-    expect(onError).toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ status: 500 }));
   });
 
   it('calls onEstimateLoaded callback with estimates', async () => {

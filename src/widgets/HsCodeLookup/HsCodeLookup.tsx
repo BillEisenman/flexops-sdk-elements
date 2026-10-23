@@ -3,6 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import { useFlexOps, resolveTheme } from '../../provider/context';
 import { classifyHsCode } from '../../api/client';
+import { toError } from '../../utils/errors';
 import type { HsCodeClassification } from '../../api/types';
 import type { HsCodeLookupProps } from './types';
 import { getStyles } from './styles';
@@ -77,10 +78,9 @@ export function HsCodeLookup({
       setClassifications(response.classifications);
       onClassified?.(response.classifications);
     } catch (err) {
-      const message = err instanceof Error ? err.message
-        : (err as { message?: string }).message ?? 'HS code classification failed';
-      setError(message);
-      onError?.(new Error(message));
+      const failure = toError(err, 'HS code classification failed');
+      setError(failure.message);
+      onError?.(failure);
     } finally {
       setLoading(false);
     }

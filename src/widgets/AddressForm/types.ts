@@ -20,7 +20,10 @@ export interface AddressFormProps {
   autoValidate?: boolean;
   /** Called with the validated/normalized address on successful submit. */
   onAddressValidated?: (result: AddressValidationResult) => void;
-  /** Called on validation or API error. */
+  /**
+   * Called on validation or API error. A failed Gateway request passes the `FlexOpsApiError` itself (check with
+   * `instanceof`), carrying the HTTP `status`, the envelope `errorCode` and any `data`.
+   */
   onError?: (error: Error) => void;
   /** Label for the submit button (default: "Validate Address"). */
   submitLabel?: string;

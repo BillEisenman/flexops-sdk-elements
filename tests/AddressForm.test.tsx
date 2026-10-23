@@ -184,7 +184,7 @@ describe('AddressForm', () => {
     await waitFor(() => {
       expect(screen.getByText('Validation service unavailable')).toBeInTheDocument();
     });
-    expect(onError).toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ status: 500 }));
   });
 
   it('uses custom submit label', () => {

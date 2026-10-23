@@ -4,6 +4,7 @@ import React, { useState, useCallback } from 'react';
 import { useFlexOps } from '../../provider/context';
 import { resolveTheme } from '../../provider/context';
 import { fetchRates } from '../../api/client';
+import { toError } from '../../utils/errors';
 import type { CarrierRateEstimate, PublicRateEstimateResponse } from '../../api/types';
 import type { RateCalculatorProps, RateFormValues } from './types';
 import { RateForm } from './RateForm';
@@ -85,10 +86,9 @@ export function RateCalculator({
       setResult(response);
       onRatesFetched?.(response.rates);
     } catch (err) {
-      const message = err instanceof Error ? err.message
-        : (err as { message?: string }).message ?? 'Failed to fetch rates';
-      setError(message);
-      onError?.(new Error(message));
+      const failure = toError(err, 'Failed to fetch rates');
+      setError(failure.message);
+      onError?.(failure);
     } finally {
       setLoading(false);
     }

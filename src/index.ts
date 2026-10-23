@@ -18,7 +18,7 @@ export { AddressForm } from './widgets/AddressForm/AddressForm';
 export type { AddressFormProps } from './widgets/AddressForm/types';
 export { ShippingLabel } from './widgets/ShippingLabel/ShippingLabel';
 export type { ShippingLabelProps } from './widgets/ShippingLabel/types';
-export { HazmatClassification } from './api/types';
+export { HazmatClassification, FlexOpsApiError } from './api/types';
 export { HsCodeLookup } from './widgets/HsCodeLookup/HsCodeLookup';
 export type { HsCodeLookupProps } from './widgets/HsCodeLookup/types';
 

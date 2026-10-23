@@ -178,7 +178,7 @@ describe('HsCodeLookup', () => {
     await waitFor(() => {
       expect(screen.getByText('Classification service unavailable')).toBeInTheDocument();
     });
-    expect(onError).toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ status: 500 }));
   });
 
   it('calls onClassified callback with classifications', async () => {

@@ -22,7 +22,10 @@ export interface HsCodeLookupProps {
   onClassified?: (classifications: HsCodeClassification[]) => void;
   /** Called when a user clicks a specific classification result. */
   onCodeSelected?: (classification: HsCodeClassification) => void;
-  /** Called on classification or API error. */
+  /**
+   * Called on classification or API error. A failed Gateway request passes the `FlexOpsApiError` itself (check with
+   * `instanceof`), carrying the HTTP `status`, the envelope `errorCode` and any `data`.
+   */
   onError?: (error: Error) => void;
   /** Additional CSS class for the outer container. */
   className?: string;

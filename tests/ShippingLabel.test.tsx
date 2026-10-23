@@ -5,7 +5,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { FlexOpsProvider } from '../src/provider/FlexOpsProvider';
 import { ShippingLabel } from '../src/widgets/ShippingLabel/ShippingLabel';
-import { HazmatClassification } from '../src/api/types';
+import { HazmatClassification, FlexOpsApiError } from '../src/index';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -176,7 +176,7 @@ describe('ShippingLabel', () => {
     await waitFor(() => {
       expect(screen.getByText('Invalid recipient address')).toBeInTheDocument();
     });
-    expect(onError).toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ status: 422 }));
   });
 
   it('calls correct API endpoint with payload', async () => {
@@ -319,6 +319,35 @@ describe('ShippingLabel HAZMAT declaration', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/hazmatClassification/);
     expect(mockFetch).not.toHaveBeenCalled();
     expect(onError).toHaveBeenCalled();
+  });
+
+  it('passes the Gateway refusal to onError with its errorCode, status and data', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false, status: 400,
+      json: async () => ({ success: false, message: 'Declare the parcel contents.',
+        errorCode: 'HazmatDeclarationRequired', data: { field: 'hazmatClassification' } }),
+    });
+    const onError = vi.fn();
+    submit({ hazmatClassification: HazmatClassification.None, onError });
+    expect(await screen.findByRole('alert')).toHaveTextContent('Declare the parcel contents.');
+    expect(onError).toHaveBeenCalledTimes(1);
+    const error = onError.mock.calls[0][0];
+    expect(error).toBeInstanceOf(FlexOpsApiError);
+    expect(error).toMatchObject({ message: 'Declare the parcel contents.', status: 400,
+      errorCode: 'HazmatDeclarationRequired', data: { field: 'hazmatClassification' } });
+  });
+
+  it('passes an approval refusal to onError with its errorCode and status', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => preview })
+      .mockResolvedValueOnce({ ok: false, status: 400,
+        json: async () => ({ success: false, message: 'Attest the HAZMAT shipment.', errorCode: 'HAZMAT_ATTESTATION_REQUIRED' }) });
+    const onError = vi.fn();
+    submit({ hazmatClassification: HazmatClassification.LithiumBatteryContainedInEquipment, onError });
+    fireEvent.click(await screen.findByText('Approve and Buy'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Attest the HAZMAT shipment.');
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0]).toBeInstanceOf(FlexOpsApiError);
+    expect(onError.mock.calls[0][0]).toMatchObject({ status: 400, errorCode: 'HAZMAT_ATTESTATION_REQUIRED' });
   });
 
   it('refuses a value that is not a HAZMAT class', async () => {

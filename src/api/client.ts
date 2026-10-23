@@ -13,8 +13,8 @@ import type {
   WidgetTrackingResponse,
   HsCodeClassifyRequest,
   HsCodeClassifyResponse,
-  FlexOpsApiError,
 } from './types';
+import { FlexOpsApiError } from './types';
 
 interface ClientConfig {
   baseUrl: string;
@@ -36,18 +36,28 @@ function stripTrailingSlash(url: string): string {
   return url.endsWith('/') ? url.slice(0, -1) : url;
 }
 
-/** Parses a Gateway response. A 2xx with no body (204, or Content-Length 0) yields undefined. */
+/**
+ * Parses a Gateway response. A 2xx with no body (204, or Content-Length 0) yields undefined.
+ * A failure throws a FlexOpsApiError carrying the status and the error envelope's `message`,
+ * `errorCode` and `data`.
+ */
 async function handleResponse<T>(response: Response): Promise<T | undefined> {
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
+    let errorCode: string | undefined;
+    let data: unknown;
     try {
-      const body = await response.json();
-      if (body.message) message = body.message;
+      const body: unknown = await response.json();
+      if (body && typeof body === 'object') {
+        const envelope = body as { message?: unknown; errorCode?: unknown; data?: unknown };
+        if (typeof envelope.message === 'string' && envelope.message) message = envelope.message;
+        if (typeof envelope.errorCode === 'string' && envelope.errorCode) errorCode = envelope.errorCode;
+        if (envelope.data !== null) data = envelope.data;
+      }
     } catch {
-      // Use default message
+      // Not JSON: use the default message
     }
-    const error: FlexOpsApiError = { message, status: response.status };
-    throw error;
+    throw new FlexOpsApiError(message, response.status, errorCode, data);
   }
   if (response.status === 204 || response.headers?.get('content-length') === '0') return undefined;
   return response.json() as Promise<T>;
@@ -56,10 +66,7 @@ async function handleResponse<T>(response: Response): Promise<T | undefined> {
 /** Like handleResponse, for calls whose widget needs a body: an empty success is an error. */
 async function handleBody<T>(response: Response): Promise<T> {
   const body = await handleResponse<T>(response);
-  if (body === undefined) {
-    const error: FlexOpsApiError = { message: 'Gateway returned no content.', status: response.status };
-    throw error;
-  }
+  if (body === undefined) throw new FlexOpsApiError('Gateway returned no content.', response.status);
   return body;
 }
 
