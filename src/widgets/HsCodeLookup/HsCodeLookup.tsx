@@ -20,7 +20,7 @@ function confidenceColor(percent: number): string {
  *
  * @example
  * ```tsx
- * <FlexOpsProvider config={{ baseUrl: 'https://gateway.flexops.io', apiKey: 'live_...' }}>
+ * <FlexOpsProvider config={{ baseUrl: '/api/flexops' }}> // your server route adds the API key
  *   <HsCodeLookup onCodeSelected={(code) => console.log(code)} />
  * </FlexOpsProvider>
  * ```

@@ -18,7 +18,7 @@ import { getCarrierInfo } from '../../utils/carrier-logos';
  *
  * @example
  * ```tsx
- * <FlexOpsProvider config={{ baseUrl: 'https://gateway.flexops.io', apiKey: 'live_...' }}>
+ * <FlexOpsProvider config={{ baseUrl: '/api/flexops' }}> // your server route adds the API key
  *   <ShippingLabel
  *     hazmatClassification={HazmatClassification.None}
  *     defaultFrom={{ street1: '123 Warehouse Ln', city: 'Dallas', state: 'TX', postalCode: '75201' }}

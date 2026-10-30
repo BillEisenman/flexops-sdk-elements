@@ -15,17 +15,24 @@ import type {
   HsCodeClassifyResponse,
 } from './types';
 import { FlexOpsApiError } from './types';
+import { assertApiKeyAllowedHere } from './keys';
 
 interface ClientConfig {
   baseUrl: string;
   apiKey?: string;
 }
 
-function buildHeaders(config: ClientConfig): Record<string, string> {
-  const headers: Record<string, string> = {
+/** Headers for the anonymous routes, whose CORS policy refuses X-API-Key. */
+function publicHeaders(): Record<string, string> {
+  return {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
+}
+
+function buildHeaders(config: ClientConfig): Record<string, string> {
+  assertApiKeyAllowedHere(config.apiKey);
+  const headers = publicHeaders();
   if (config.apiKey) {
     headers['X-API-Key'] = config.apiKey;
   }
@@ -79,7 +86,7 @@ export async function fetchRates(
   const base = stripTrailingSlash(config.baseUrl);
   const response = await fetch(`${base}/api/rates/public-estimate`, {
     method: 'POST',
-    headers: buildHeaders(config),
+    headers: publicHeaders(),
     body: JSON.stringify(request),
     signal,
   });
@@ -220,7 +227,7 @@ export async function fetchTracking(
   const encodedToken = encodeURIComponent(token);
   const response = await fetch(`${base}/api/widget/tracking/${encodedToken}`, {
     method: 'GET',
-    headers: buildHeaders(config),
+    headers: publicHeaders(),
     signal,
   });
   return handleBody<WidgetTrackingResponse>(response);

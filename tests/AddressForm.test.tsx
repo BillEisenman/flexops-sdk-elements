@@ -10,7 +10,7 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <FlexOpsProvider config={{ baseUrl: 'https://api.test.com', apiKey: 'fxk_test_key' }}>
+  <FlexOpsProvider config={{ baseUrl: 'https://api.test.com', apiKey: 'test_key' }}>
     {children}
   </FlexOpsProvider>
 );
@@ -228,6 +228,6 @@ describe('AddressForm', () => {
     fireEvent.click(screen.getByText('Validate Address'));
 
     await waitFor(() => { expect(mockFetch).toHaveBeenCalled(); });
-    expect(mockFetch.mock.calls[0][1].headers['X-API-Key']).toBe('fxk_test_key');
+    expect(mockFetch.mock.calls[0][1].headers['X-API-Key']).toBe('test_key');
   });
 });

@@ -10,7 +10,7 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <FlexOpsProvider config={{ baseUrl: 'https://api.test.com', apiKey: 'fxk_test_key' }}>
+  <FlexOpsProvider config={{ baseUrl: 'https://api.test.com', apiKey: 'test_key' }}>
     {children}
   </FlexOpsProvider>
 );
@@ -248,7 +248,7 @@ describe('DeliveryPromise', () => {
     expect(screen.queryByText('Delivery Estimate')).not.toBeInTheDocument();
   });
 
-  it('includes API key header in request', async () => {
+  it('sends no API key on this anonymous route', async () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockEstimateResponse) });
 
     render(
@@ -261,7 +261,7 @@ describe('DeliveryPromise', () => {
     });
 
     const headers = mockFetch.mock.calls[0][1].headers;
-    expect(headers['X-API-Key']).toBe('fxk_test_key');
+    expect(headers['X-API-Key']).toBeUndefined();
   });
 
   it('shows empty state when no estimates returned', async () => {
