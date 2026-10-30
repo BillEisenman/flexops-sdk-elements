@@ -252,8 +252,8 @@ describe('createLabel', () => {
     const sandbox = { labelId: 'x', trackingNumber: 'x', isSandbox: true, carrierCode: 'x', serviceCode: 'x', labelData: 'x', rate: 0 };
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(sandbox) });
     const request = {
-      from: { street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
-      to: { street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
+      from: { name: 'n', street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
+      to: { name: 'n', street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
       weightOz: 1, maximumPostageAmount: 20,
     };
 
@@ -274,8 +274,8 @@ describe('createLabel', () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockResponse) });
 
     const result = await createLabel(config, {
-      from: { street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201', country: 'US' },
-      to: { street1: '456 Main', city: 'LA', state: 'CA', postalCode: '90210', country: 'US' },
+      from: { name: 'n', street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201', country: 'US' },
+      to: { name: 'n', street1: '456 Main', city: 'LA', state: 'CA', postalCode: '90210', country: 'US' },
       weightOz: 16, maximumPostageAmount: 20,
     });
 
@@ -289,8 +289,8 @@ describe('createLabel', () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ labelId: 'x', trackingNumber: 'x', isSandbox: true, carrierCode: 'x', serviceCode: 'x', labelData: 'x', rate: 0 }) });
 
     await createLabel({ baseUrl: 'https://api.test.com', apiKey: 'test_789' }, {
-      from: { street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
-      to: { street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
+      from: { name: 'n', street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
+      to: { name: 'n', street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
       weightOz: 1, maximumPostageAmount: 20,
     });
 
@@ -306,8 +306,8 @@ describe('createLabel', () => {
     }) });
 
     const result = await createLabel({ baseUrl: 'https://api.test.com' }, {
-      from: { street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
-      to: { street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
+      from: { name: 'n', street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
+      to: { name: 'n', street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
       weightOz: 1, carrier: 'usps', service: 'PRIORITY', maximumPostageAmount: 20, hazmatClassification: 0,
     });
 
@@ -407,8 +407,8 @@ describe('classifyHsCode', () => {
 describe('empty success responses', () => {
   const config = { baseUrl: 'https://api.test.com' };
   const label = {
-    from: { street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
-    to: { street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
+    from: { name: 'n', street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
+    to: { name: 'n', street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
     weightOz: 1, maximumPostageAmount: 20, hazmatClassification: 0 as const,
   };
 

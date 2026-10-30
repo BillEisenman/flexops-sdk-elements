@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- `ShippingLabel` now asks for sender and recipient names and sends them. Without them, a real purchase passed preview and then failed at approval, while sandbox showed no problem. `defaultFrom` accepts `name`.
 - `RateCalculator`, `DeliveryPromise` and `TrackingWidget` no longer send a configured key. Those routes are anonymous, and their browser access policy does not allow the header.
 
 ## 3.2.0 (2026-10-22)

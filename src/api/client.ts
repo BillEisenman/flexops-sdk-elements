@@ -178,7 +178,7 @@ export async function createLabel(
   if (confirmationToken && !idempotencyKey?.trim()) throw new Error('Reuse the original purchase key when approving or retrying.');
   const purchaseKey = idempotencyKey ?? crypto.randomUUID();
   const address = (value: CreateLabelRequest['from']) => ({
-    addressLine1: value.street1, addressLine2: value.street2,
+    name: value.name, addressLine1: value.street1, addressLine2: value.street2,
     city: value.city, stateProvince: value.state, postalCode: value.postalCode, countryCode: value.country,
   });
   const response = await fetch(`${stripTrailingSlash(config.baseUrl)}/api/shipping/labels`, {
