@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`@flexops/elements` is the embeddable React widget library for FlexOps shipping. It provides drop-in components third parties can render on their own sites: **rate calculator, delivery promise, tracking, address validation, HS code lookup, and label creation**. Published to npm as `@flexops/elements`; current version `1.0.2`.
+`@flexops/elements` is the embeddable React widget library for FlexOps shipping. It provides drop-in components third parties can render on their own sites: **rate calculator, delivery promise, tracking, address validation, HS code lookup, and label creation**. Published to npm as `@flexops/elements`; `package.json` holds the current version.
 
-Distinct from `@flexops/sdk` (the headless TypeScript SDK): Elements ships **UI**; the SDK ships **functions**. Elements depends on Gateway HTTP endpoints and uses the customer's publishable key (à la Stripe Elements) — no server-side secret leaks to the browser.
+Distinct from `@flexops/sdk` (the headless TypeScript SDK): Elements ships **UI**; the SDK ships **functions**. Elements calls Gateway HTTP endpoints from the browser. A configured `apiKey` (`live_` or `test_`) is sent as `X-API-Key`, so page visitors can read it; there is no publishable-key type.
 
 ## Build & Run Commands
 
@@ -14,7 +14,7 @@ Distinct from `@flexops/sdk` (the headless TypeScript SDK): Elements ships **UI*
 npm install                     # Install dependencies
 npm run build                   # Build dist/ via Vite (ESM + CJS + types)
 npm run test                    # vitest run
-npm run typecheck               # tsc --noEmit
+npm run lint                    # tsc --noEmit (CI also runs scripts/check-exports.mjs after build)
 ```
 
 Output: `dist/index.mjs` (ESM), `dist/index.cjs` (CJS), `dist/index.d.ts` (types). Importers pick automatically via the `exports` map in `package.json`.
@@ -27,10 +27,10 @@ Customer's web app (Next.js / CRA / Vite / plain ESM)
 ├── imports → @flexops/elements (this repo)
 │             └─ React components calling Gateway via fetch
 │
-└── Gateway BFF (gateway.flexops.io) — only ingress; rate-limited per pub key
+└── Gateway BFF (gateway.flexops.io) — only ingress
 ```
 
-All Elements widgets call **FlexOps Gateway** (never VSCS or Integrations direct). The customer's publishable key authenticates browser-originated calls; sensitive operations (label create with billing implications) still flow through Gateway's idempotency and metering middlewares server-side.
+All Elements widgets call **FlexOps Gateway** (never VSCS or Integrations direct). A configured `apiKey` authenticates browser-originated calls; sensitive operations (label create with billing implications) still flow through Gateway's idempotency and metering middlewares server-side.
 
 ## Key Directories
 
