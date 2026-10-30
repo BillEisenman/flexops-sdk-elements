@@ -18,10 +18,10 @@ import { getCarrierInfo } from '../../utils/carrier-logos';
  *
  * @example
  * ```tsx
- * <FlexOpsProvider config={{ baseUrl: 'https://gateway.flexops.io', apiKey: 'live_...' }}>
+ * <FlexOpsProvider config={{ baseUrl: '/api/flexops' }}> // your server route adds the API key
  *   <ShippingLabel
  *     hazmatClassification={HazmatClassification.None}
- *     defaultFrom={{ street1: '123 Warehouse Ln', city: 'Dallas', state: 'TX', postalCode: '75201' }}
+ *     defaultFrom={{ name: 'Acme Warehouse', street1: '123 Warehouse Ln', city: 'Dallas', state: 'TX', postalCode: '75201' }}
  *     lockFrom
  *     onLabelCreated={(label) => console.log('Tracking:', label.trackingNumber)}
  *   />
@@ -47,6 +47,7 @@ export function ShippingLabel({
   const s = getStyles(theme);
 
   const [from, setFrom] = useState({
+    name: defaultFrom?.name ?? '',
     street1: defaultFrom?.street1 ?? '',
     city: defaultFrom?.city ?? '',
     state: defaultFrom?.state ?? '',
@@ -55,6 +56,7 @@ export function ShippingLabel({
   });
 
   const [to, setTo] = useState({
+    name: '',
     street1: '',
     city: '',
     state: '',
@@ -72,6 +74,8 @@ export function ShippingLabel({
   const [pending, setPending] = useState<{ request: CreateLabelRequest; key: string; preview: LabelPurchasePreview; attempted: boolean; client: { baseUrl: string; apiKey?: string } } | null>(null);
   const busy = useRef(false);
   const maximumId = useId();
+  const fromNameId = useId();
+  const toNameId = useId();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [label, setLabel] = useState<LabelResponse | null>(null);
@@ -85,6 +89,11 @@ export function ShippingLabel({
       const message = 'This label form is not configured: set the hazmatClassification prop (0 = None) or an orderId.';
       setError(message);
       onError?.(new Error(message));
+      return;
+    }
+
+    if (!from.name.trim() || !to.name.trim()) {
+      setError('Please enter the sender and recipient names.');
       return;
     }
 
@@ -107,6 +116,7 @@ export function ShippingLabel({
     try {
       const request: CreateLabelRequest = {
         from: {
+          name: from.name.trim(),
           street1: from.street1.trim(),
           city: from.city.trim(),
           state: from.state.trim(),
@@ -114,6 +124,7 @@ export function ShippingLabel({
           country: from.country.trim() || 'US',
         },
         to: {
+          name: to.name.trim(),
           street1: to.street1.trim(),
           city: to.city.trim(),
           state: to.state.trim(),
@@ -206,6 +217,12 @@ export function ShippingLabel({
         {/* From Address */}
         <div style={s.sectionTitle}>From (Sender)</div>
         <div style={s.fieldGroupFull}>
+          <label style={s.label} htmlFor={fromNameId}>Name</label>
+          <input id={fromNameId} style={lockFrom && defaultFrom?.name ? fromInputStyle : s.input} type="text" placeholder="Acme Warehouse" maxLength={200}
+            value={from.name} onChange={(e) => setFrom((p) => ({ ...p, name: e.target.value }))}
+            readOnly={lockFrom && !!defaultFrom?.name} required />
+        </div>
+        <div style={s.fieldGroupFull}>
           <label style={s.label}>Street Address</label>
           <input style={fromInputStyle} type="text" placeholder="123 Warehouse Ln"
             value={from.street1} onChange={(e) => setFrom((p) => ({ ...p, street1: e.target.value }))}
@@ -242,6 +259,11 @@ export function ShippingLabel({
 
         {/* To Address */}
         <div style={s.sectionTitle}>To (Recipient)</div>
+        <div style={s.fieldGroupFull}>
+          <label style={s.label} htmlFor={toNameId}>Name</label>
+          <input id={toNameId} style={s.input} type="text" placeholder="Jane Customer" maxLength={200}
+            value={to.name} onChange={(e) => setTo((p) => ({ ...p, name: e.target.value }))} required />
+        </div>
         <div style={s.fieldGroupFull}>
           <label style={s.label}>Street Address</label>
           <input style={s.input} type="text" placeholder="456 Customer Ave"

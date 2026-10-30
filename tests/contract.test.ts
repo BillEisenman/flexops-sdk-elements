@@ -31,7 +31,7 @@ function isDocumented(method: string, path: string): boolean {
     op.segments.every((s, i) => (s.startsWith('{') && s.endsWith('}') && segments[i].length > 0) || s === segments[i]));
 }
 
-const config = { baseUrl: 'https://gateway.contract.test', apiKey: 'fxk_contract' };
+const config = { baseUrl: 'https://gateway.contract.test', apiKey: 'test_contract' };
 const address = { street1: '1 Main', city: 'Austin', state: 'TX', postalCode: '78701', country: 'US' };
 const label = { from: address, to: { ...address, postalCode: '97201' }, weightOz: 8, maximumPostageAmount: 20, hazmatClassification: 0 as const };
 

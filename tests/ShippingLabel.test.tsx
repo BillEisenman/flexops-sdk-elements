@@ -11,7 +11,7 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <FlexOpsProvider config={{ baseUrl: 'https://api.test.com', apiKey: 'fxk_test_key' }}>
+  <FlexOpsProvider config={{ baseUrl: 'https://api.test.com', apiKey: 'test_key' }}>
     {children}
   </FlexOpsProvider>
 );
@@ -43,7 +43,7 @@ describe('ShippingLabel', () => {
 
   it('pre-fills sender address from defaultFrom prop', () => {
     render(
-      <ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ street1: '123 Warehouse Ln', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
+      <ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ name: 'Test Warehouse', street1: '123 Warehouse Ln', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
       { wrapper },
     );
 
@@ -57,7 +57,7 @@ describe('ShippingLabel', () => {
     render(
       <ShippingLabel
         hazmatClassification={HazmatClassification.None}
-        defaultFrom={{ street1: '123 Warehouse Ln', city: 'Dallas', state: 'TX', postalCode: '75201' }}
+        defaultFrom={{ name: 'Test Warehouse', street1: '123 Warehouse Ln', city: 'Dallas', state: 'TX', postalCode: '75201' }}
         lockFrom
       />,
       { wrapper },
@@ -67,6 +67,62 @@ describe('ShippingLabel', () => {
     expect(warehouseInput).toHaveAttribute('readonly');
   });
 
+  it('sends the sender and recipient names, trimmed', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockLabelResponse) });
+
+    render(
+      <ShippingLabel
+        hazmatClassification={HazmatClassification.None}
+        defaultFrom={{ name: ' Test Warehouse ', street1: '123 Warehouse', city: 'Dallas', state: 'TX', postalCode: '75201' }}
+      />,
+      { wrapper },
+    );
+    fireEvent.change(screen.getByPlaceholderText('Jane Customer'), { target: { value: ' Jane Buyer ' } });
+    fireEvent.change(screen.getByPlaceholderText('456 Customer Ave'), { target: { value: '789 Buyer Rd' } });
+    fireEvent.change(screen.getByPlaceholderText('Los Angeles'), { target: { value: 'LA' } });
+    fireEvent.change(screen.getByPlaceholderText('CA'), { target: { value: 'CA' } });
+    fireEvent.change(screen.getByPlaceholderText('90210'), { target: { value: '90210' } });
+    fireEvent.change(screen.getByPlaceholderText('16'), { target: { value: '16' } });
+    fireEvent.change(screen.getByLabelText('Maximum postage (USD)'), { target: { value: '10.00' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview Postage' }));
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.origin.name).toBe('Test Warehouse');
+    expect(body.destination.name).toBe('Jane Buyer');
+  });
+
+  it.each([
+    ['sender', { name: '  ', street1: '123 Warehouse', city: 'Dallas', state: 'TX', postalCode: '75201' }, 'Jane Buyer'],
+    ['recipient', { name: 'Test Warehouse', street1: '123 Warehouse', city: 'Dallas', state: 'TX', postalCode: '75201' }, '  '],
+  ])('asks for a missing %s name before any request', async (_who, defaultFrom, recipient) => {
+    render(<ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={defaultFrom} />, { wrapper });
+    fireEvent.change(screen.getByPlaceholderText('Jane Customer'), { target: { value: recipient } });
+    fireEvent.change(screen.getByPlaceholderText('456 Customer Ave'), { target: { value: '789 Buyer Rd' } });
+    fireEvent.change(screen.getByPlaceholderText('Los Angeles'), { target: { value: 'LA' } });
+    fireEvent.change(screen.getByPlaceholderText('CA'), { target: { value: 'CA' } });
+    fireEvent.change(screen.getByPlaceholderText('90210'), { target: { value: '90210' } });
+    fireEvent.change(screen.getByPlaceholderText('16'), { target: { value: '16' } });
+    fireEvent.change(screen.getByLabelText('Maximum postage (USD)'), { target: { value: '10.00' } });
+    fireEvent.submit(screen.getByRole('button', { name: 'Preview Postage' }).closest('form')!);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/names/);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('keeps the sender name editable when lockFrom has no name to show', () => {
+    render(
+      <ShippingLabel
+        hazmatClassification={HazmatClassification.None}
+        defaultFrom={{ street1: '123 Warehouse Ln', city: 'Dallas', state: 'TX', postalCode: '75201' }}
+        lockFrom
+      />,
+      { wrapper },
+    );
+
+    expect(screen.getByPlaceholderText('Acme Warehouse')).not.toHaveAttribute('readonly');
+  });
+
   it('creates label and shows confirmation', async () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockLabelResponse) });
 
@@ -74,13 +130,14 @@ describe('ShippingLabel', () => {
     render(
       <ShippingLabel
         hazmatClassification={HazmatClassification.None}
-        defaultFrom={{ street1: '123 Warehouse', city: 'Dallas', state: 'TX', postalCode: '75201' }}
+        defaultFrom={{ name: 'Test Warehouse', street1: '123 Warehouse', city: 'Dallas', state: 'TX', postalCode: '75201' }}
         onLabelCreated={onLabelCreated}
       />,
       { wrapper },
     );
 
     // Fill recipient
+    fireEvent.change(screen.getByPlaceholderText('Jane Customer'), { target: { value: 'Jane Buyer' } });
     fireEvent.change(screen.getByPlaceholderText('456 Customer Ave'), { target: { value: '789 Buyer Rd' } });
     fireEvent.change(screen.getByPlaceholderText('Los Angeles'), { target: { value: 'LA' } });
     fireEvent.change(screen.getByPlaceholderText('CA'), { target: { value: 'CA' } });
@@ -104,10 +161,11 @@ describe('ShippingLabel', () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockLabelResponse) });
 
     render(
-      <ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
+      <ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ name: 'Test Warehouse', street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
       { wrapper },
     );
 
+    fireEvent.change(screen.getByPlaceholderText('Jane Customer'), { target: { value: 'Jane Buyer' } });
     fireEvent.change(screen.getByPlaceholderText('456 Customer Ave'), { target: { value: '789 Main' } });
     fireEvent.change(screen.getByPlaceholderText('Los Angeles'), { target: { value: 'LA' } });
     fireEvent.change(screen.getByPlaceholderText('CA'), { target: { value: 'CA' } });
@@ -127,10 +185,11 @@ describe('ShippingLabel', () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockLabelResponse) });
 
     render(
-      <ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
+      <ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ name: 'Test Warehouse', street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
       { wrapper },
     );
 
+    fireEvent.change(screen.getByPlaceholderText('Jane Customer'), { target: { value: 'Jane Buyer' } });
     fireEvent.change(screen.getByPlaceholderText('456 Customer Ave'), { target: { value: '789 Main' } });
     fireEvent.change(screen.getByPlaceholderText('Los Angeles'), { target: { value: 'LA' } });
     fireEvent.change(screen.getByPlaceholderText('CA'), { target: { value: 'CA' } });
@@ -158,12 +217,13 @@ describe('ShippingLabel', () => {
     render(
       <ShippingLabel
         hazmatClassification={HazmatClassification.None}
-        defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }}
+        defaultFrom={{ name: 'Test Warehouse', street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }}
         onError={onError}
       />,
       { wrapper },
     );
 
+    fireEvent.change(screen.getByPlaceholderText('Jane Customer'), { target: { value: 'Jane Buyer' } });
     fireEvent.change(screen.getByPlaceholderText('456 Customer Ave'), { target: { value: '789 Main' } });
     fireEvent.change(screen.getByPlaceholderText('Los Angeles'), { target: { value: 'LA' } });
     fireEvent.change(screen.getByPlaceholderText('CA'), { target: { value: 'CA' } });
@@ -183,10 +243,11 @@ describe('ShippingLabel', () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockLabelResponse) });
 
     render(
-      <ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
+      <ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ name: 'Test Warehouse', street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
       { wrapper },
     );
 
+    fireEvent.change(screen.getByPlaceholderText('Jane Customer'), { target: { value: 'Jane Buyer' } });
     fireEvent.change(screen.getByPlaceholderText('456 Customer Ave'), { target: { value: '789 Buyer' } });
     fireEvent.change(screen.getByPlaceholderText('Los Angeles'), { target: { value: 'LA' } });
     fireEvent.change(screen.getByPlaceholderText('CA'), { target: { value: 'CA' } });
@@ -220,10 +281,11 @@ describe('ShippingLabel', () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockLabelResponse) });
 
     render(
-      <ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
+      <ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ name: 'Test Warehouse', street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />,
       { wrapper },
     );
 
+    fireEvent.change(screen.getByPlaceholderText('Jane Customer'), { target: { value: 'Jane Buyer' } });
     fireEvent.change(screen.getByPlaceholderText('456 Customer Ave'), { target: { value: '789 Main' } });
     fireEvent.change(screen.getByPlaceholderText('Los Angeles'), { target: { value: 'LA' } });
     fireEvent.change(screen.getByPlaceholderText('CA'), { target: { value: 'CA' } });
@@ -234,15 +296,15 @@ describe('ShippingLabel', () => {
     fireEvent.click(screen.getByText('Preview Postage'));
 
     await waitFor(() => { expect(mockFetch).toHaveBeenCalled(); });
-    expect(mockFetch.mock.calls[0][1].headers['X-API-Key']).toBe('fxk_test_key');
+    expect(mockFetch.mock.calls[0][1].headers['X-API-Key']).toBe('test_key');
   });
 });
 
 const preview = { status: 'Preview', quotedPostageAmount: 8.5, maximumPostageAmount: 10,
   currency: 'USD', expiresAt: '2099-01-01T00:00:00Z', confirmationToken: 'signed-preview' };
 function fillPurchase() {
-  render(<ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />, { wrapper });
-  for (const [placeholder, value] of [['456 Customer Ave', '789 Main'], ['Los Angeles', 'LA'], ['CA', 'CA'], ['90210', '90210'], ['16', '8']])
+  render(<ShippingLabel hazmatClassification={HazmatClassification.None} defaultFrom={{ name: 'Test Warehouse', street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />, { wrapper });
+  for (const [placeholder, value] of [['Jane Customer', 'Jane Buyer'], ['456 Customer Ave', '789 Main'], ['Los Angeles', 'LA'], ['CA', 'CA'], ['90210', '90210'], ['16', '8']])
     fireEvent.change(screen.getByPlaceholderText(placeholder), { target: { value } });
   fireEvent.change(screen.getByLabelText('Maximum postage (USD)'), { target: { value: '10.00' } });
   fireEvent.click(screen.getByText('Preview Postage'));
@@ -278,8 +340,8 @@ it('requires approval and retries the exact purchase after response loss', async
 
 describe('ShippingLabel HAZMAT declaration', () => {
   function submit(props: React.ComponentProps<typeof ShippingLabel>) {
-    render(<ShippingLabel {...props} defaultFrom={{ street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />, { wrapper });
-    for (const [placeholder, value] of [['456 Customer Ave', '789 Main'], ['Los Angeles', 'LA'], ['CA', 'CA'], ['90210', '90210'], ['16', '8']])
+    render(<ShippingLabel {...props} defaultFrom={{ name: 'Test Warehouse', street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201' }} />, { wrapper });
+    for (const [placeholder, value] of [['Jane Customer', 'Jane Buyer'], ['456 Customer Ave', '789 Main'], ['Los Angeles', 'LA'], ['CA', 'CA'], ['90210', '90210'], ['16', '8']])
       fireEvent.change(screen.getByPlaceholderText(placeholder), { target: { value } });
     fireEvent.change(screen.getByLabelText('Maximum postage (USD)'), { target: { value: '10.00' } });
     fireEvent.click(screen.getByText('Preview Postage'));

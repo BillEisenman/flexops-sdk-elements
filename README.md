@@ -38,8 +38,7 @@ Wraps all FlexOps widgets with configuration and theming.
 ```tsx
 <FlexOpsProvider
   config={{
-    baseUrl: 'https://gateway.flexops.io',  // Required
-    apiKey: 'live_...',                  // Sent as X-API-Key; needed by AddressForm, ShippingLabel, HsCodeLookup
+    baseUrl: 'https://gateway.flexops.io',  // Required. Your own server route for AddressForm, ShippingLabel, HsCodeLookup
     theme: {                              // Optional — override default styling
       primaryColor: '#your-brand-color',
       fontFamily: 'Inter, sans-serif',
@@ -79,18 +78,66 @@ Displays real-time package tracking with workspace branding.
 | `onTrackingLoaded` | `(data) => void` | — | Callback when data loads |
 | `onError` | `(error) => void` | — | Callback on error |
 
+### API keys and your server
+
+Anyone can read a key that a web page sends, so **API keys stay on your server**. `RateCalculator`, `DeliveryPromise` and `TrackingWidget` need no key and can call the Gateway directly from any site. `AddressForm`, `HsCodeLookup` and `ShippingLabel` need one, so point them at a route on your server that adds it:
+
+```tsx
+<FlexOpsProvider config={{ baseUrl: 'https://gateway.flexops.io' }}>
+  <TrackingWidget token={token} />
+</FlexOpsProvider>
+
+<FlexOpsProvider config={{ baseUrl: '/api/flexops' }}>
+  <ShippingLabel />
+</FlexOpsProvider>
+```
+
+A Next.js route, as a starting point:
+
+```ts
+// app/api/flexops/[...path]/route.ts
+const ALLOWED = new Set(['api/addresses/validate', 'api/shipping/hs-codes/classify', 'api/shipping/labels']);
+
+export async function POST(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
+  // Use your own sign-in and CSRF checks. Without them, anyone can buy labels through this route.
+  if (!(await isSignedInUser(req))) return new Response(null, { status: 401 });
+
+  const path = (await ctx.params).path.join('/');
+  if (!ALLOWED.has(path)) return new Response(null, { status: 404 });
+
+  const idempotencyKey = req.headers.get('Idempotency-Key');
+  const response = await fetch(`https://gateway.flexops.io/${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': process.env.FLEXOPS_API_KEY!,
+      ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
+    },
+    body: await req.text(),
+  });
+  return new Response(response.body, {
+    status: response.status,
+    headers: { 'Content-Type': response.headers.get('Content-Type') ?? 'application/json' },
+  });
+}
+```
+
+- Forward the body and `Idempotency-Key` unchanged, and never retry a purchase on your own.
+- Use a dedicated key with only the scopes you need (`shipping:write` for labels) and a low daily spend cap.
+- `FlexOpsProvider` throws if it is given anything but a `test_` key in a browser. The `pk_` key type is included, because nothing limits it to read-only. `test_` keys work directly for local trials, on the widgets that take a key.
+
 ### Gateway endpoints
 
-Each widget calls one FlexOps Gateway route. A configured `apiKey` is sent as `X-API-Key`; the Gateway refuses API keys sent as `Authorization: Bearer`.
+Each widget calls one FlexOps Gateway route. A key is sent as `X-API-Key`; the Gateway refuses API keys sent as `Authorization: Bearer`.
 
 | Widget | Request | API key |
 |---|---|---|
 | `RateCalculator` | `POST /api/rates/public-estimate` | Not needed (anonymous, rate-limited per IP) |
 | `DeliveryPromise` | `POST /api/rates/public-estimate` | Not needed |
 | `TrackingWidget` | `GET /api/widget/tracking/{token}` | Not needed |
-| `AddressForm` | `POST /api/addresses/validate` | `shipping:read` |
-| `HsCodeLookup` | `POST /api/shipping/hs-codes/classify` | `shipping:read`, international shipping enabled |
-| `ShippingLabel` | `POST /api/shipping/labels` | `shipping:write` |
+| `AddressForm` | `POST /api/addresses/validate` | `shipping:read`, added by your server |
+| `HsCodeLookup` | `POST /api/shipping/hs-codes/classify` | `shipping:read`, added by your server; international shipping enabled |
+| `ShippingLabel` | `POST /api/shipping/labels` | `shipping:write`, added by your server |
 
 `DeliveryPromise` turns each service's `estimatedDeliveryDays` into a date after the next ship date, fastest first. The days are the Gateway's fixed per-service estimates, not carrier commitments, and carry no on-time confidence. Set `weightOz` (default 16) to the typical parcel weight, and `service` (for example `"Ground Advantage"`) to the service you ship with, so shoppers are not shown a faster service's date.
 
@@ -138,7 +185,7 @@ MIT - FlexOps, LLC
 
 ### `<ShippingLabel>` approval flow
 
-The label form sends Gateway's normalized origin/destination/package payload. Enter a USD maximum and carrier/service, then select **Preview Postage**. Review the server quote and expiry, then explicitly **Approve and Buy**. Cancel returns to editing without a purchase. The maximum excludes later carrier adjustments and separate fees.
+The label form sends Gateway's normalized origin/destination/package payload. Enter the sender and recipient names, a USD maximum and carrier/service, then select **Preview Postage**. Review the server quote and expiry, then explicitly **Approve and Buy**. Cancel returns to editing without a purchase. The maximum excludes later carrier adjustments and separate fees.
 
 Deploy this widget with Gateway's bounded approval contract; an older Gateway cannot guarantee preview semantics. Sandbox responses may immediately show a synthetic label without postage. After any attempted live purchase, the form retains its request, original client configuration and key and offers **Retry Same Purchase**. An unknown outcome must be reconciled before starting another purchase. Operation state lasts for the mounted widget only: keep it mounted while unresolved and retain the displayed reference for operator recovery if the page closes. No browser persistence of private shipment data is added.
 

@@ -17,6 +17,7 @@ export type ShippingLabelProps = ShippingLabelBaseProps & ShippingLabelDeclarati
 export interface ShippingLabelBaseProps {
   /** Pre-fill the sender address fields. */
   defaultFrom?: {
+    name?: string;
     street1?: string;
     city?: string;
     state?: string;

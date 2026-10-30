@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `@flexops/elements` is the embeddable React widget library for FlexOps shipping. It provides drop-in components third parties can render on their own sites: **rate calculator, delivery promise, tracking, address validation, HS code lookup, and label creation**. Published to npm as `@flexops/elements`; `package.json` holds the current version.
 
-Distinct from `@flexops/sdk` (the headless TypeScript SDK): Elements ships **UI**; the SDK ships **functions**. Elements calls Gateway HTTP endpoints from the browser. A configured `apiKey` (`live_` or `test_`) is sent as `X-API-Key`, so page visitors can read it; there is no publishable-key type.
+Distinct from `@flexops/sdk` (the headless TypeScript SDK): Elements ships **UI**; the SDK ships **functions**. Elements calls Gateway HTTP endpoints from the browser. Only `test_` keys are accepted in a browser, because page visitors can read a key: `FlexOpsProvider` and the API client throw on anything else, including the Gateway's `pk_` type, which nothing restricts to read-only. Widgets that need a real key point `baseUrl` at the merchant's server, which adds it.
 
 ## Build & Run Commands
 
@@ -30,7 +30,7 @@ Customer's web app (Next.js / CRA / Vite / plain ESM)
 └── Gateway BFF (gateway.flexops.io) — only ingress
 ```
 
-All Elements widgets call **FlexOps Gateway** (never VSCS or Integrations direct). A configured `apiKey` authenticates browser-originated calls; sensitive operations (label create with billing implications) still flow through Gateway's idempotency and metering middlewares server-side.
+All Elements widgets call **FlexOps Gateway** (never VSCS or Integrations direct). The merchant's server adds the key for widgets that need one; sensitive operations (label create with billing implications) still flow through Gateway's idempotency and metering middlewares server-side.
 
 ## Key Directories
 

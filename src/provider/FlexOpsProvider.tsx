@@ -1,11 +1,12 @@
 // Copyright (c) FlexOps, LLC. All rights reserved.
 
 import React, { useMemo } from 'react';
+import { assertApiKeyAllowedHere } from '../api/keys';
 import { FlexOpsContext, resolveTheme } from './context';
 import type { FlexOpsConfig } from './types';
 
 export interface FlexOpsProviderProps {
-  /** FlexOps configuration including baseUrl and optional API key. */
+  /** FlexOps configuration including baseUrl and an optional test_ API key. */
   config: FlexOpsConfig;
   children: React.ReactNode;
 }
@@ -23,6 +24,8 @@ export interface FlexOpsProviderProps {
  * ```
  */
 export function FlexOpsProvider({ config, children }: FlexOpsProviderProps) {
+  assertApiKeyAllowedHere(config.apiKey);
+
   const value = useMemo(() => ({
     config,
     theme: resolveTheme(config.theme),

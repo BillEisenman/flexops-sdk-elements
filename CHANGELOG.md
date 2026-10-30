@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.0.0 (2026-10-30)
+
+### Breaking
+
+- `FlexOpsProvider` and the API client refuse any API key other than `test_` in a browser, before any request. Anyone can read a key a web page sends. To upgrade, move the key to a route on your server and set `baseUrl` to that route; see "API keys and your server" in the README. `RateCalculator`, `DeliveryPromise` and `TrackingWidget` need no key.
+
+### Fixed
+
+- `ShippingLabel` now asks for sender and recipient names and sends them. Without them, a real purchase passed preview and then failed at approval, while sandbox showed no problem. `defaultFrom` accepts `name`.
+- `RateCalculator`, `DeliveryPromise` and `TrackingWidget` no longer send a configured key. Those routes are anonymous, and their browser access policy does not allow the header.
+
 ## 3.2.0 (2026-10-22)
 
 ### Fixed

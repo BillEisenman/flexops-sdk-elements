@@ -42,12 +42,12 @@ describe('FlexOpsProvider', () => {
 
   it('passes API key through config', () => {
     render(
-      <FlexOpsProvider config={{ baseUrl: 'https://api.test.com', apiKey: 'fxk_test_abc123' }}>
+      <FlexOpsProvider config={{ baseUrl: 'https://api.test.com', apiKey: 'test_abc123' }}>
         <TestConsumer />
       </FlexOpsProvider>,
     );
 
-    expect(screen.getByTestId('api-key').textContent).toBe('fxk_test_abc123');
+    expect(screen.getByTestId('api-key').textContent).toBe('test_abc123');
   });
 });
 

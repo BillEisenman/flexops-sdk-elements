@@ -41,15 +41,15 @@ describe('fetchRates', () => {
     expect(result.rates[0].carrierName).toBe('USPS');
   });
 
-  it('includes API key header when provided', async () => {
+  it('sends no API key on this anonymous route', async () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ rates: [], generatedAtUtc: '', disclaimer: '' }) });
 
-    await fetchRates({ baseUrl: 'https://api.test.com', apiKey: 'fxk_test_123' }, {
+    await fetchRates({ baseUrl: 'https://api.test.com', apiKey: 'test_123' }, {
       fromPostalCode: '10001', fromCountry: 'US', toPostalCode: '90210', toCountry: 'US', weightOz: 16,
     });
 
     const headers = mockFetch.mock.calls[0][1].headers;
-    expect(headers['X-API-Key']).toBe('fxk_test_123');
+    expect(headers['X-API-Key']).toBeUndefined();
   });
 
   it('strips trailing slash from baseUrl', async () => {
@@ -166,16 +166,16 @@ describe('fetchDeliveryEstimate', () => {
     });
   });
 
-  it('includes API key header when provided', async () => {
+  it('sends no API key on this anonymous route', async () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ rates: [], generatedAtUtc: '' }) });
 
-    await fetchDeliveryEstimate({ baseUrl: 'https://api.test.com', apiKey: 'fxk_test_456' }, {
+    await fetchDeliveryEstimate({ baseUrl: 'https://api.test.com', apiKey: 'test_456' }, {
       originPostalCode: '10001', originCountry: 'US',
       destinationPostalCode: '90210', destinationCountry: 'US', weightOz: 16,
     });
 
     const headers = mockFetch.mock.calls[0][1].headers;
-    expect(headers['X-API-Key']).toBe('fxk_test_456');
+    expect(headers['X-API-Key']).toBeUndefined();
     expect(headers.Authorization).toBeUndefined();
   });
 
@@ -252,8 +252,8 @@ describe('createLabel', () => {
     const sandbox = { labelId: 'x', trackingNumber: 'x', isSandbox: true, carrierCode: 'x', serviceCode: 'x', labelData: 'x', rate: 0 };
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(sandbox) });
     const request = {
-      from: { street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
-      to: { street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
+      from: { name: 'n', street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
+      to: { name: 'n', street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
       weightOz: 1, maximumPostageAmount: 20,
     };
 
@@ -274,8 +274,8 @@ describe('createLabel', () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockResponse) });
 
     const result = await createLabel(config, {
-      from: { street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201', country: 'US' },
-      to: { street1: '456 Main', city: 'LA', state: 'CA', postalCode: '90210', country: 'US' },
+      from: { name: 'n', street1: '123 WH', city: 'Dallas', state: 'TX', postalCode: '75201', country: 'US' },
+      to: { name: 'n', street1: '456 Main', city: 'LA', state: 'CA', postalCode: '90210', country: 'US' },
       weightOz: 16, maximumPostageAmount: 20,
     });
 
@@ -288,13 +288,13 @@ describe('createLabel', () => {
   it('includes API key header when provided', async () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ labelId: 'x', trackingNumber: 'x', isSandbox: true, carrierCode: 'x', serviceCode: 'x', labelData: 'x', rate: 0 }) });
 
-    await createLabel({ baseUrl: 'https://api.test.com', apiKey: 'fxk_test_789' }, {
-      from: { street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
-      to: { street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
+    await createLabel({ baseUrl: 'https://api.test.com', apiKey: 'test_789' }, {
+      from: { name: 'n', street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
+      to: { name: 'n', street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
       weightOz: 1, maximumPostageAmount: 20,
     });
 
-    expect(mockFetch.mock.calls[0][1].headers['X-API-Key']).toBe('fxk_test_789');
+    expect(mockFetch.mock.calls[0][1].headers['X-API-Key']).toBe('test_789');
     expect(mockFetch.mock.calls[0][1].headers.Authorization).toBeUndefined();
   });
 
@@ -306,8 +306,8 @@ describe('createLabel', () => {
     }) });
 
     const result = await createLabel({ baseUrl: 'https://api.test.com' }, {
-      from: { street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
-      to: { street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
+      from: { name: 'n', street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
+      to: { name: 'n', street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
       weightOz: 1, carrier: 'usps', service: 'PRIORITY', maximumPostageAmount: 20, hazmatClassification: 0,
     });
 
@@ -397,18 +397,18 @@ describe('classifyHsCode', () => {
   it('includes API key header when provided', async () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ productDescription: '', classifications: [], provider: '' }) });
 
-    await classifyHsCode({ baseUrl: 'https://api.test.com', apiKey: 'fxk_test_hs' }, { title: 'Widget' });
+    await classifyHsCode({ baseUrl: 'https://api.test.com', apiKey: 'test_hs' }, { title: 'Widget' });
 
     const headers = mockFetch.mock.calls[0][1].headers;
-    expect(headers['X-API-Key']).toBe('fxk_test_hs');
+    expect(headers['X-API-Key']).toBe('test_hs');
   });
 });
 
 describe('empty success responses', () => {
   const config = { baseUrl: 'https://api.test.com' };
   const label = {
-    from: { street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
-    to: { street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
+    from: { name: 'n', street1: 'a', city: 'b', state: 'c', postalCode: 'd', country: 'US' },
+    to: { name: 'n', street1: 'e', city: 'f', state: 'g', postalCode: 'h', country: 'US' },
     weightOz: 1, maximumPostageAmount: 20, hazmatClassification: 0 as const,
   };
 

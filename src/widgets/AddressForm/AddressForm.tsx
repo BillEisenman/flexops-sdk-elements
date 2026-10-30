@@ -14,7 +14,7 @@ import { getStyles } from './styles';
  *
  * @example
  * ```tsx
- * <FlexOpsProvider config={{ baseUrl: 'https://gateway.flexops.io', apiKey: 'live_...' }}>
+ * <FlexOpsProvider config={{ baseUrl: '/api/flexops' }}> // your server route adds the API key
  *   <AddressForm onAddressValidated={(result) => console.log(result)} />
  * </FlexOpsProvider>
  * ```

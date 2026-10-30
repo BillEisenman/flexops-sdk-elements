@@ -34,9 +34,9 @@ export const defaultTheme: FlexOpsTheme = {
 
 /** Configuration for the FlexOps provider. */
 export interface FlexOpsConfig {
-  /** Base URL of the FlexOps Gateway API. */
+  /** Base URL of the FlexOps Gateway API, or of your own server route for widgets that need a key. */
   baseUrl: string;
-  /** Optional API key for authenticated endpoints (live_... or test_...). */
+  /** Optional sandbox key (test_...). Any other key is refused in a browser: keep it on your server. */
   apiKey?: string;
   /** Optional workspace ID for attribution. */
   workspaceId?: string;

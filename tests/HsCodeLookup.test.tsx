@@ -10,7 +10,7 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <FlexOpsProvider config={{ baseUrl: 'https://api.test.com', apiKey: 'fxk_test_key' }}>
+  <FlexOpsProvider config={{ baseUrl: 'https://api.test.com', apiKey: 'test_key' }}>
     {children}
   </FlexOpsProvider>
 );

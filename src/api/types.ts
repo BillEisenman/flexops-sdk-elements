@@ -139,9 +139,12 @@ export function isHazmatClassification(value: unknown): value is HazmatClassific
   return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 6;
 }
 
+/** An address on a label. USPS requires a sender and a recipient name when there is no order. */
+export type LabelAddress = AddressValidationRequest & { name: string };
+
 export interface CreateLabelRequest {
-  from: AddressValidationRequest;
-  to: AddressValidationRequest;
+  from: LabelAddress;
+  to: LabelAddress;
   weightOz: number;
   lengthIn?: number;
   widthIn?: number;
