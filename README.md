@@ -124,7 +124,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ path: string[]
 
 - Forward the body and `Idempotency-Key` unchanged, and never retry a purchase on your own.
 - Use a dedicated key with only the scopes you need (`shipping:write` for labels) and a low daily spend cap.
-- `FlexOpsProvider` throws if it is given anything but a `test_` key in a browser. The `pk_` key type is included, because nothing limits it to read-only. `test_` keys work directly for local trials, on the widgets that take a key.
+- `FlexOpsProvider` throws if it is given anything but a `test_` key in a browser. The `pk_` key type is included, because nothing limits it to read-only. A `test_` key is accepted in a browser only for trials against a local Gateway. `gateway.flexops.io` doesn't let a browser on another site send any key, so use your server route there too.
 
 ### Gateway endpoints
 
